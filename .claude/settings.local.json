@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(npm create *)",
+      "Bash(npm view *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)",
+      "Bash(node \"C:/Users/dchanda/AppData/Local/Temp/claude/C--Users-dchanda-OneDrive---Marquette-University-Desktop-RAG-Viz/f0c22c59-14e0-4e01-bd38-4d2cf61b2af8/scratchpad/check-tex.mjs\")",
+      "Bash(node check-tex.mjs)",
+      "Bash(node \"C:/Users/dchanda/AppData/Local/Temp/claude/C--Users-dchanda-OneDrive---Marquette-University-Desktop-RAG-Viz/f0c22c59-14e0-4e01-bd38-4d2cf61b2af8/scratchpad/add-icons.mjs\")",
+      "Bash(sed -i -e '197s/const rowH = 26/const rowH = 34/' -e '198s/const gap = 16/const gap = 20/' -e '256s/const ch = 26/const ch = 40/' -e '307s/const rowH = 26/const rowH = 36/' -e '308s/const arrowH = 16/const arrowH = 22/' src/components/Figure.tsx)",
+      "Bash(npx vite *)",
+      "Bash(grep -o \"react-flow__edge'[^;]\\\\{0,160\\\\}\" node_modules/@xyflow/react/dist/esm/index.mjs)",
+      "Bash(grep -n -A6 \"cc\\(\\\\[$\" node_modules/@xyflow/react/dist/esm/index.mjs)"
+    ]
+  }
+}
