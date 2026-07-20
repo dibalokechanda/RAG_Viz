@@ -2721,6 +2721,7 @@ scores = evaluate(dataset, metrics=[faithfulness, answer_relevancy])`,
       { name: 'DeepEval', what: 'LLM-as-judge evaluation with 14+ metrics', url: 'https://docs.confident-ai.com/' },
       { name: 'TruLens', what: 'Evaluation and tracing for LLM apps', url: 'https://www.trulens.org/' },
       { name: 'Phoenix (Arize)', what: 'LLM observability with eval traces', url: 'https://phoenix.arize.com/' },
+      { name: 'Open RAG Eval', what: 'Comprehensive open-source RAG evaluation by Vectara', url: 'https://github.com/vectara/open-rag-eval' },
     ],
     math: [
       {
