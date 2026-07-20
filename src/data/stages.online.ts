@@ -676,10 +676,14 @@ set_llm_cache(RedisSemanticCache(
       },
     ],
     detail: [
-      'Real query distributions are heavily skewed. A small set of questions accounts for a large share of traffic, which means a large share of requests are re-deriving an answer the system has already produced. Caching is usually the cheapest latency and cost win available.',
-      'There are four distinct caches, and they are worth keeping separate because they invalidate on different things.',
-      'The embedding cache maps text to vector. It is keyed on the normalised text plus the embedding model version, and it never goes stale for a given model, so it is pure profit. The retrieval cache maps a query to the chunk ids it returned; it is invalidated by any change to the index. The answer cache maps a query to the finished response, and is invalidated by the index, the prompt, and the generation model. Provider-side prompt caching is different again: it caches the attention state of a shared prefix, so it rewards putting the stable part of the prompt first.',
-      'The semantic part is what makes the answer cache interesting. Instead of requiring an exact string match, embed the incoming query and look for a stored query within some cosine distance. "How do I reset my password" then hits the entry stored for "password reset steps". That is also exactly where it becomes dangerous, because the threshold is now deciding whether two questions mean the same thing.',
+      'Real query distributions are heavily skewed. A small set of questions accounts for a large share of traffic, which means many requests are re-deriving answers the system has already produced. Caching is usually the cheapest latency and cost win available.',
+      '**There are four distinct caches, and they invalidate on different things:**',
+      '- **Embedding cache:** Maps text to vector. Keyed on normalised text + embedding model version. It never goes stale for a given model (pure profit).',
+      '- **Retrieval cache:** Maps a query to the chunk IDs it returned. Invalidated by any change to the index.',
+      '- **Answer cache:** Maps a query to the finished response. Invalidated by changes to the index, the prompt, or the generation model.',
+      '- **Provider-side prompt caching:** Caches the attention state of a shared prefix. Rewards putting the stable part of the prompt first.',
+      '**The semantic part is what makes the answer cache interesting.** Instead of requiring an exact string match, you embed the incoming query and look for a stored query within some cosine distance. "How do I reset my password" then hits the entry stored for "password reset steps".',
+      'This is also exactly where it becomes dangerous, because the cosine threshold is now deciding whether two questions mean the same thing.',
     ],
     stack: [
       { name: 'Redis', what: 'In-memory key-value store, widely used for fast caching', url: 'https://redis.io/' },
