@@ -601,7 +601,7 @@ export LANGCHAIN_PROJECT=rag-prod`,
     stack: [
       { name: 'LangSmith', what: 'Tracing, monitoring, and evaluation for LangChain apps', url: 'https://smith.langchain.com/' },
       { name: 'LangFuse', what: 'Open-source LLM observability and tracing', url: 'https://langfuse.com/' },
-      { name: 'Phoenix (Arize)', what: 'LLM traces, evals, and experiment tracking', url: 'https://phoenix.arize.com/' },
+      { name: 'Phoenix (Arize)', what: 'LLM traces, evals, and experiment tracking', url: 'https://arize.com/phoenix/' },
       { name: 'Weights & Biases', what: 'Experiment tracking and prompt logging', url: 'https://wandb.ai/' },
       { name: 'OpenLLMetry', what: 'OpenTelemetry-based instrumentation for LLM apps', url: 'https://github.com/traceloop/openllmetry' },
       { name: 'Helicone', what: 'LLM proxy with cost tracking and caching', url: 'https://www.helicone.ai/' },
