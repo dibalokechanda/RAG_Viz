@@ -232,9 +232,17 @@ export const platformStages: Stage[] = [
     tagline: 'Pin every artifact the answer depends on',
     governs: ['chunking', 'embedding', 'index', 'prompt'],
     detail: [
-      'A RAG answer is a function of four artifacts, and reproducing it requires all four pinned: the chunker configuration, the embedding model, the index snapshot, and the prompt template. Version any three and the fourth will still silently change the output.',
-      'They are not independent. The embedding model determines the vector space, so changing it invalidates the index entirely. The chunker determines what the units are, so changing it invalidates both the chunks and their embeddings. Only the prompt template is genuinely free to move on its own, which is convenient, because it is also the one that changes most often and gets tracked least.',
-      'The practical form is a manifest: one versioned object naming the exact version of each artifact, promoted as a unit. Deployments then reference a manifest rather than assembling components at runtime, and a rollback is a pointer change rather than a rebuild.',
+      '**A RAG answer is a function of four artifacts.** Reproducing it requires pinning all four:',
+      '- The chunker configuration',
+      '- The embedding model',
+      '- The index snapshot',
+      '- The prompt template',
+      '*(Version any three, and the fourth will still silently change the output.)*',
+      '**Artifacts are not independent:**',
+      '- **Embedding model:** Determines the vector space. Changing it invalidates the index entirely.',
+      '- **Chunker:** Determines the units. Changing it invalidates both the chunks and their embeddings.',
+      '- **Prompt template:** The only one genuinely free to move on its own (which is convenient, as it changes most often).',
+      '**The solution is a manifest:** One versioned object naming the exact version of each artifact, promoted as a unit. Deployments reference a manifest, making rollbacks a simple pointer change rather than a rebuild.',
     ],
     math: [
       {
@@ -306,8 +314,9 @@ export const platformStages: Stage[] = [
         kind: 'method',
         summary: 'Detect mixed spaces before serving',
         detail: [
-          'Stamp every vector with the embedding model id and dimension, and refuse to serve an index whose stamps are not uniform. A half-migrated index is geometrically valid and semantically meaningless, and nothing else in the stack will notice.',
-          'The same check catches the subtler version of the bug: querying a correctly-built index with a query embedded by a different model.',
+          '**The problem:** A half-migrated index is geometrically valid but semantically meaningless, and nothing in the stack will notice. Querying a correctly-built index with a query embedded by a different model is a subtler version of the same bug.',
+          '**The solution:** Stamp every vector with the embedding model id and dimension.',
+          '**The enforcement:** Refuse to serve an index whose stamps are not uniform, and refuse to query it if the query embedding model does not match.',
         ],
       },
     ],
