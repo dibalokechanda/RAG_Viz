@@ -1579,10 +1579,10 @@ retriever = ContextualCompressionRetriever(
       },
       {
         title: 'Why one is cacheable and the other is not',
-        tex: String.raw`\text{bi: } N \text{ encodings offline} + 1 \text{ online} \qquad \text{cross: } K \text{ encodings online}`,
+        tex: String.raw`\text{bi: } N \text{ offline} + 1 \text{ online} \quad \text{vs} \quad \text{cross: } K \text{ online passes}`,
         worked: [
-          { tex: String.raw`\text{bi-encoder: } 9{,}304 \text{ offline} + 1 \text{ per query}` },
-          { tex: String.raw`\text{cross-encoder: } 50 \text{ forward passes per query, every query}` },
+          { tex: String.raw`\text{bi: } 9{,}304 \text{ offline} + 1 \text{ online}`, caption: 'only one forward pass blocks the user' },
+          { tex: String.raw`\text{cross: } 50 \text{ online}`, caption: '50 forward passes per query, every query' },
         ],
       },
       {
