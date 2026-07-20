@@ -67,7 +67,9 @@ function chipRowHeight(labels: string[], width: number): number {
   let rows = 1
   let x = 0
   for (const l of labels) {
-    const w = l.length * 7.6 + 22
+    // Overestimating width slightly is safer than underestimating, which causes overlapping.
+    // Base width 28 accounts for 24px padding + 2px border + slack.
+    const w = l.length * 7.8 + 28
     if (x > 0 && x + w > width) {
       rows++
       x = w + CHIP_GAP
