@@ -1,4 +1,6 @@
 import type { Figure } from '../data/types'
+import FigureD3Network from './FigureD3Network'
+import FigureD3Layered from './FigureD3Layered'
 
 /**
  * Inline monochrome diagrams. Everything is plain SVG on a 0–W viewBox that
@@ -506,6 +508,10 @@ export default function FigureView({ figure }: { figure: Figure }) {
       <Segments f={figure} />
     ) : figure.kind === 'ranked' ? (
       <Ranked f={figure} />
+    ) : figure.kind === 'network' ? (
+      <FigureD3Network f={figure} />
+    ) : figure.kind === 'layered' ? (
+      <FigureD3Layered f={figure} />
     ) : (
       <Blocks f={figure} />
     )

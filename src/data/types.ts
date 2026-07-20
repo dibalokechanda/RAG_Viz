@@ -172,6 +172,25 @@ export type Figure =
         arrow?: string
       }[]
     }
+  | {
+      kind: 'network'
+      title?: string
+      caption?: string
+      nodes: { id: string; x: number; y: number; isEntry?: boolean; isTarget?: boolean; label?: string }[]
+      links: { source: string; target: string }[]
+      /** Sequence of node ids representing the search path to animate. */
+      path?: string[]
+    }
+  | {
+      kind: 'layered'
+      title?: string
+      caption?: string
+      layers: number[]
+      nodes: { id: string; x: number; y: number; maxLayer: number; isEntry?: boolean; isTarget?: boolean }[]
+      links: { source: string; target: string; layer: number }[]
+      /** Sequence of {node, layer} representing the search descent to animate. */
+      path?: { node: string; layer: number }[]
+    }
 
 /**
  * A node in a stage's concept mind-map. Concepts nest arbitrarily deep; the

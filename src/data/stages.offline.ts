@@ -1141,6 +1141,77 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
             ],
           },
         ],
+        figures: [
+          {
+            kind: 'network',
+            title: 'NSW Greedy Search',
+            caption: 'At each node, the search evaluates all neighbours and hops to the one closest to the query, stopping when it reaches a local minimum.',
+            nodes: [
+              { id: 'start', x: 40, y: 180, isEntry: true },
+              { id: 'n1', x: 120, y: 150 },
+              { id: 'n2', x: 180, y: 90 },
+              { id: 'n3', x: 250, y: 130 },
+              { id: 'n4', x: 290, y: 50 },
+              { id: 'n5', x: 330, y: 100 },
+              { id: 'target', x: 370, y: 70, isTarget: true }
+            ],
+            links: [
+              { source: 'start', target: 'n1' },
+              { source: 'n1', target: 'n2' },
+              { source: 'n2', target: 'n3' },
+              { source: 'n2', target: 'n4' },
+              { source: 'n4', target: 'n5' },
+              { source: 'n5', target: 'target' },
+              { source: 'start', target: 'n2' },
+              { source: 'n1', target: 'n3' },
+              { source: 'n3', target: 'n5' },
+              { source: 'n3', target: 'target' },
+              { source: 'n4', target: 'target' }
+            ],
+            path: ['start', 'n2', 'n4', 'target']
+          },
+          {
+            kind: 'layered',
+            title: 'HNSW Probability Skip List',
+            caption: 'Layers are constructed exponentially. Search enters at the highest layer L2, hops to the local minimum, drops to L1, hops to the new local minimum, and so on until the base layer L0.',
+            layers: [2, 1, 0],
+            nodes: [
+              { id: 'nA', x: 80, y: 0, maxLayer: 2, isEntry: true },
+              { id: 'nB', x: 220, y: 0, maxLayer: 2 },
+              { id: 'nC', x: 150, y: 0, maxLayer: 1 },
+              { id: 'nD', x: 300, y: 0, maxLayer: 1 },
+              { id: 'nE', x: 50, y: 0, maxLayer: 0 },
+              { id: 'nF', x: 110, y: 0, maxLayer: 0 },
+              { id: 'nG', x: 180, y: 0, maxLayer: 0 },
+              { id: 'nH', x: 260, y: 0, maxLayer: 0 },
+              { id: 'nI', x: 330, y: 0, maxLayer: 0 },
+              { id: 'target', x: 350, y: 0, maxLayer: 0, isTarget: true }
+            ],
+            links: [
+              { source: 'nA', target: 'nB', layer: 2 },
+              { source: 'nA', target: 'nC', layer: 1 },
+              { source: 'nC', target: 'nB', layer: 1 },
+              { source: 'nB', target: 'nD', layer: 1 },
+              { source: 'nA', target: 'nE', layer: 0 },
+              { source: 'nE', target: 'nF', layer: 0 },
+              { source: 'nF', target: 'nC', layer: 0 },
+              { source: 'nC', target: 'nG', layer: 0 },
+              { source: 'nG', target: 'nB', layer: 0 },
+              { source: 'nB', target: 'nH', layer: 0 },
+              { source: 'nH', target: 'nD', layer: 0 },
+              { source: 'nD', target: 'nI', layer: 0 },
+              { source: 'nI', target: 'target', layer: 0 }
+            ],
+            path: [
+              { node: 'nA', layer: 2 },
+              { node: 'nB', layer: 2 },
+              { node: 'nB', layer: 1 },
+              { node: 'nD', layer: 1 },
+              { node: 'nD', layer: 0 },
+              { node: 'target', layer: 0 }
+            ]
+          }
+        ],
         tradeoffs: {
           gains: ['Best recall-per-millisecond at high recall', 'No training pass', 'Incremental inserts', 'ef_search tunable at query time'],
           costs: ['Largest memory footprint', 'Deletes only tombstone, space reclaims on rebuild', 'Slow to build'],
