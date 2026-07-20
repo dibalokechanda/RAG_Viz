@@ -15,7 +15,7 @@
  */
 
 :root {
-  --bg: #f6f5f3;
+  --bg: #EFEBE3;
   --bg-grid: #e2dfdb;
   --surface: #ffffff;
   --surface-sunken: #fbfaf9;
@@ -25,17 +25,19 @@
   --border-strong: #dad5d0;
   --border-heavy: #b6b0a8;
 
-  --ink: #1a1815;
-  --text: #1a1815; /* 16.9:1 on white */
-  --text-dim: #55504a; /*  7.7:1 */
-  --text-faint: #6f6960; /*  5.2:1 */
+  --ink: #13251B;
+  --accent-mint: #e4f0e8;
 
-  /* Lane identity, by weight rather than hue. */
+  --text: #1a1815;
+  --text-dim: #55504a;
+  --text-faint: #6f6960;
+
   --lane-offline: #a8a29a;
-  --lane-online: #1a1815;
+  --lane-online: #13251B;
 
   --sans:
     'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --serif: 'Georgia', 'Playfair Display', 'Newsreader', serif;
   --mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
 
   /* Type ramp */
@@ -47,10 +49,6 @@
   --fs-lg: 20px;
   --fs-xl: 28px;
 
-  /* Canvas type runs larger than panel type. The graph sits at ~0.75 zoom, so
-     anything drawn on it loses a quarter of its size before it reaches the
-     eye — these are pre-multiplied to land at the same optical size as the
-     panel ramp above. */
   --fs-canvas-title: 18px;
   --fs-canvas-body: 14.5px;
   --fs-canvas-label: 12.5px;
@@ -58,18 +56,13 @@
   --r-sm: 5px;
   --r-md: 8px;
   --r-lg: 14px;
+  --r-xl: 24px;
 
-  /* Warm-tinted, layered. Two shadows per level: a tight contact shadow and a
-     wider ambient one. That pairing is what stops it looking like a drop box. */
-  --shadow-xs: 0 1px 2px rgba(26, 24, 21, 0.04);
-  --shadow-sm:
-    0 1px 2px rgba(26, 24, 21, 0.04), 0 2px 6px rgba(26, 24, 21, 0.04);
-  --shadow-md:
-    0 1px 3px rgba(26, 24, 21, 0.05), 0 6px 18px rgba(26, 24, 21, 0.07);
-  --shadow-lg:
-    0 2px 8px rgba(26, 24, 21, 0.06), 0 16px 44px rgba(26, 24, 21, 0.11);
-  --shadow-xl:
-    0 4px 14px rgba(26, 24, 21, 0.08), 0 34px 90px rgba(26, 24, 21, 0.2);
+  --shadow-xs: 0 1px 2px rgba(19, 37, 27, 0.03);
+  --shadow-sm: 0 2px 8px rgba(19, 37, 27, 0.04);
+  --shadow-md: 0 4px 16px rgba(19, 37, 27, 0.05), 0 8px 32px rgba(19, 37, 27, 0.03);
+  --shadow-lg: 0 8px 24px rgba(19, 37, 27, 0.06), 0 24px 64px rgba(19, 37, 27, 0.04);
+  --shadow-xl: 0 12px 32px rgba(19, 37, 27, 0.08), 0 44px 110px rgba(19, 37, 27, 0.1);
 }
 
 * {
@@ -162,9 +155,10 @@ body {
 }
 
 .topbar h1 {
-  font-size: var(--fs-md);
-  font-weight: 600;
-  letter-spacing: -0.022em;
+  font-family: var(--serif);
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 
@@ -290,23 +284,21 @@ body {
 .node {
   width: 415px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  padding: 17px 19px 18px;
+  border: none;
+  border-radius: var(--r-xl);
+  padding: 24px;
   cursor: pointer;
   position: relative;
   box-shadow: var(--shadow-sm);
   transition:
-    border-color 160ms,
     box-shadow 160ms,
     transform 160ms,
     opacity 220ms;
 }
 
 .node:hover {
-  border-color: var(--border-strong);
   box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .node.online {
@@ -348,11 +340,10 @@ body {
 
 .node.is-selected,
 .node.is-active {
-  border-color: var(--ink);
   border-style: solid;
   background: var(--surface);
   box-shadow:
-    0 0 0 1px var(--ink),
+    0 0 0 2px var(--ink),
     var(--shadow-md);
 }
 
@@ -613,15 +604,18 @@ body {
 .rail {
   width: 304px;
   flex: 0 0 304px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+  background: transparent;
+  border-right: none;
   overflow-y: auto;
   padding: 28px 24px 48px;
   z-index: 10;
 }
 
 .rail h2 {
-  color: var(--text-faint);
+  font-family: var(--serif);
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  color: var(--ink);
   margin: 0 0 18px;
 }
 
@@ -664,8 +658,8 @@ body {
   flex: 1 1 auto;
   font-family: var(--mono);
   font-size: var(--fs-xs);
-  padding: 8px 10px;
-  border-radius: var(--r-sm);
+  padding: 8px 12px;
+  border-radius: 999px;
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--text-dim);
@@ -792,7 +786,10 @@ body {
   width: 520px;
   flex: 0 0 520px;
   background: var(--surface);
-  border-left: 1px solid var(--border);
+  border-left: none;
+  border-radius: var(--r-xl) 0 0 var(--r-xl);
+  margin-top: 16px;
+  box-shadow: var(--shadow-lg);
   overflow-y: auto;
   z-index: 10;
   display: flex;
@@ -801,8 +798,7 @@ body {
 
 .detail-head {
   padding: 32px 34px 26px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--accent-mint);
 }
 
 .detail-eyebrow {
@@ -841,9 +837,10 @@ body {
 
 .detail h3 {
   margin: 0;
-  font-size: var(--fs-xl);
-  font-weight: 600;
-  letter-spacing: -0.034em;
+  font-family: var(--serif);
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   line-height: 1.12;
 }
 
