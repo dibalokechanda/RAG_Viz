@@ -69,7 +69,7 @@ interface Props {
 }
 
 export default function DetailPanel({ stage, variantId, trace, onOpenMap }: Props) {
-  const { setVariant } = usePipeline()
+  const { setVariant, select } = usePipeline()
 
   if (!stage) {
     return (
@@ -105,6 +105,7 @@ export default function DetailPanel({ stage, variantId, trace, onOpenMap }: Prop
           </span>
           <span className={`phase ${stage.phase}`}>{stage.phase}</span>
           {stage.ordinal && <span className="detail-ord">§{stage.ordinal}</span>}
+          <button className="close-btn" onClick={() => select(null)}>✕</button>
         </div>
         <h3>{stage.label}</h3>
         <div className="detail-tagline">{stage.tagline}</div>

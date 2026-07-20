@@ -1806,3 +1806,49 @@ body {
     display: none;
   }
 }
+
+@media (max-width: 768px) {
+  .rail {
+    width: 100%;
+    flex-basis: 100%;
+  }
+  .detail {
+    width: 100%;
+    flex-basis: 100%;
+    border-radius: 0;
+  }
+  .topbar {
+    padding: 0 16px;
+  }
+  .topbar h1 {
+    font-size: var(--fs-md);
+  }
+  .player {
+    width: calc(100% - 32px);
+    left: 16px;
+    bottom: 16px;
+  }
+  .close-btn {
+    display: flex;
+  }
+}
+
+.close-btn {
+  display: none;
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 99px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-dim);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+.close-btn:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
