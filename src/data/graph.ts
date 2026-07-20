@@ -1,6 +1,6 @@
 import { MarkerType, type Edge, type Node } from '@xyflow/react'
 import type { Phase, PipelineConfig, Stage } from './types'
-import { offlineStages, onlineStages, platformStages } from './stages'
+import { offlineStages, onlineStages, platformStages, stageById } from './stages'
 
 export interface LaneNodeData extends Record<string, unknown> {
   title: string
@@ -91,7 +91,8 @@ function heightOf(stage: Stage): number {
     h += ROW_LEAD + chipRowHeight(stage.variants.map((v) => v.label), w)
   }
   if (stage.governs) {
-    h += ROW_LEAD + RULE_LEAD + chipRowHeight(['governs', ...stage.governs], w)
+    const governLabels = stage.governs.map((id) => stageById.get(id)?.label ?? id)
+    h += ROW_LEAD + RULE_LEAD + chipRowHeight(['governs', ...governLabels], w)
   }
   if (stage.fanoutInto) {
     h += ROW_LEAD + RULE_LEAD + chipRowHeight(stage.fanoutInto, w)
