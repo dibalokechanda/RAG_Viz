@@ -82,8 +82,8 @@ export const platformStages: Stage[] = [
         kind: 'method',
         summary: 'Events arrive twice; that must be harmless',
         detail: [
-          'Every real event system delivers at-least-once, so the same document will be ingested twice. If chunk ids are generated fresh each run, you get duplicates in the index that then compete for the same top-K slot.',
-          'Derive chunk ids deterministically, a hash of source id plus chunk offset plus chunker version, so re-ingesting the same document overwrites rather than appends. This makes replay safe, which in turn makes backfills and reconciliation safe.',
+          '- **Events arrive at-least-once:** The same document will be ingested twice. If chunk IDs are generated fresh each run, you get duplicates in the index that then compete for the same top-K slot.',
+          '- **Make chunk IDs deterministic:** Use a hash of source ID plus chunk offset plus chunker version, so re-ingesting the same document overwrites rather than appends. This makes replay, backfills, and reconciliation safe.',
         ],
       },
       {
@@ -104,8 +104,8 @@ export const platformStages: Stage[] = [
         kind: 'tradeoff',
         summary: 'The first run is a different problem',
         detail: [
-          'Initial ingestion embeds the whole corpus at once and is throughput-bound, batch aggressively, run it offline, expect it to take hours or days at scale.',
-          'Steady state is latency-bound and tiny by comparison. Sizing the ongoing pipeline against backfill numbers massively over-provisions it; sizing backfill against steady-state numbers means the first load never finishes.',
+          '- **Initial ingestion:** Embeds the whole corpus at once and is throughput-bound. Batch aggressively, run it offline, expect it to take hours or days at scale.',
+          '- **Steady state:** Latency-bound and tiny by comparison. Sizing the ongoing pipeline against backfill numbers massively over-provisions it; sizing backfill against steady-state numbers means the first load never finishes.',
         ],
       },
     ],
@@ -270,8 +270,8 @@ export const platformStages: Stage[] = [
         kind: 'pitfall',
         summary: 'The most-changed artifact is the least tracked',
         detail: [
-          'Prompt edits are cheap to make and invisible to the build, so they tend to be made directly in a config UI or a string literal without review, without a version, and without evaluation. They also change behaviour more than most code changes do.',
-          'Treat the prompt template as a versioned artifact: reviewed, numbered, evaluated against the golden set before promotion, and recorded in the manifest. If you cannot say which prompt version produced a logged answer; you cannot debug it.',
+          '- **Untracked changes:** Prompt edits are cheap to make and invisible to the build, so they tend to be made directly in a config UI or a string literal without review, without a version, and without evaluation. They also change behaviour more than most code changes do.',
+          '- **Best Practice:** Treat the prompt template as a versioned artifact: reviewed, numbered, evaluated against the golden set before promotion, and recorded in the manifest. If you cannot say which prompt version produced a logged answer, you cannot debug it.',
         ],
       },
       {
@@ -280,8 +280,8 @@ export const platformStages: Stage[] = [
         kind: 'method',
         summary: 'Never mutate the live index in place',
         detail: [
-          'Rebuilding in place leaves the index inconsistent for the duration, and queries during that window return partial nonsense with no error.',
-          'Build the new version as a separate artifact, validate it against the golden set, then flip the alias. Keep the previous version until the new one has proven itself under real traffic, the cost of some extra storage is trivial next to the cost of a rollback that requires a rebuild.',
+          '- **In-place rebuilds fail:** Rebuilding in place leaves the index inconsistent for the duration, and queries during that window return partial nonsense with no error.',
+          '- **Blue-green deployment:** Build the new version as a separate artifact, validate it against the golden set, then flip the alias. Keep the previous version until the new one has proven itself under real traffic.',
         ],
       },
       {
@@ -309,7 +309,10 @@ export const platformStages: Stage[] = [
     detail: [
       'None of the retrieval or generation metrics mean anything without ground truth. The golden set is that ground truth: a fixed collection of queries, each paired with the chunks that should be retrieved and, where the answer matters, a reference answer to judge against.',
       'It is the single highest-leverage artifact in the whole system and the one most often skipped, because building it is unglamorous manual work. Without it, every change is shipped on vibes, and the failure mode of shipping RAG changes on vibes is that quality drifts down slowly enough that nobody notices until it is bad.',
-      'Three ways to build it, best combined. Synthetic: have a model generate a question from each chunk, so the answering chunk is known by construction, cheap and scalable, but biased toward questions that are easy to retrieve, since the question was written from the answer. Pooled: run several different retrievers, judge the union of their results, and treat unjudged chunks as irrelevant, the classic information-retrieval approach, and the most honest. Production-mined: harvest real queries from logs and label them, which is the only source that reflects what users actually ask.',
+      '**Three ways to build it, best combined:**',
+      '- **Synthetic:** Have a model generate a question from each chunk, so the answering chunk is known by construction. Cheap and scalable, but biased toward questions that are easy to retrieve.',
+      '- **Pooled:** Run several different retrievers, judge the union of their results, and treat unjudged chunks as irrelevant. The classic information-retrieval approach, and the most honest.',
+      '- **Production-mined:** Harvest real queries from logs and label them. This is the only source that reflects what users actually ask.',
       'Size matters less than stability. A few hundred queries is enough to detect meaningful regressions; what matters is that the set does not change underneath you, because a metric that moves because the test set moved tells you nothing.',
     ],
     math: [

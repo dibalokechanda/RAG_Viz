@@ -167,8 +167,9 @@ export const offlineStages: Stage[] = [
         kind: 'method',
         summary: 'Metadata narrows the candidate set',
         detail: [
-          'Filters combine with vector search in two ways, and the difference is large.',
-          'Post-filtering retrieves top-K then discards non-matching results, simple, but if the filter is selective you can retrieve 100 and keep 2. Pre-filtering restricts the search to matching vectors first, which preserves K but breaks ANN index assumptions: an HNSW graph whose nodes are mostly masked out loses connectivity and recall collapses.',
+          'Filters combine with vector search in two ways, and the difference is large:',
+          '- **Post-filtering:** Retrieves top-K then discards non-matching results. It is simple, but if the filter is selective you can retrieve 100 and keep 2.',
+          '- **Pre-filtering:** Restricts the search to matching vectors first. This preserves K but breaks ANN index assumptions: an HNSW graph whose nodes are mostly masked out loses connectivity and recall collapses.',
         ],
         math: [
           {
@@ -192,7 +193,7 @@ export const offlineStages: Stage[] = [
         summary: 'Chunk → page → document → URL',
         detail: [
           'A citation is only as good as the weakest link in this chain. If page numbers were dropped at loading, the best you can offer is a document-level citation, which the user cannot verify without reading the whole thing.',
-          'Store the character offset range of each chunk within its source document. That lets you highlight the exact supporting span rather than just naming the file.',
+          '**Best Practice:** Store the character offset range of each chunk within its source document. That lets you highlight the exact supporting span rather than just naming the file.',
         ],
       },
       {
@@ -276,8 +277,8 @@ export const offlineStages: Stage[] = [
         kind: 'idea',
         summary: 'Reproducibility is the requirement',
         detail: [
-          'An LLM cleaner is non-deterministic, so re-running ingestion produces a different corpus, which produces different embeddings, which produces different retrieval. You lose the ability to attribute a regression to any single change.',
-          'It is also unfaithful in a way regexes are not: asked to clean text, a model will silently paraphrase, summarise, or correct facts. Cleaning must be lossless with respect to meaning.',
+          '- **Non-deterministic:** Re-running ingestion produces a different corpus, different embeddings, and different retrieval. You lose the ability to attribute a regression to any single change.',
+          '- **Unfaithful:** Asked to clean text, a model will silently paraphrase, summarise, or correct facts. Cleaning must be **lossless** with respect to meaning.',
         ],
       },
       {
@@ -368,7 +369,7 @@ export const offlineStages: Stage[] = [
         label: 'Fixed-size',
         tagline: 'Cut every N tokens',
         detail:
-          'Split at a constant token count, 500 tokens, say, regardless of what the text is doing at that point. Simple, fast, completely predictable, and utterly indifferent to meaning. It will happily cut a definition in half.',
+          'Split at a constant token count (e.g. 500 tokens), regardless of what the text is doing at that point. **Simple, fast, and completely predictable, but utterly indifferent to meaning**. It will happily cut a definition in half.',
         example: { before: 'Document', after: '[0–500] [500–1000] [1000–1500]', mono: true },
         tradeoffs: {
           gains: ['Trivial to implement', 'Uniform chunk sizes', 'Predictable index size'],
@@ -412,8 +413,10 @@ export const offlineStages: Stage[] = [
         id: 'recursive',
         label: 'Recursive',
         tagline: 'Split hierarchically, only as far as needed',
-        detail:
-          'Split on the largest structural unit first, and only descend if the piece is still too big: heading → paragraph → sentence → token window. A short section stays whole; a long one gets broken along seams the author already put there.',
+        detail: [
+          'Split on the largest structural unit first, and only descend if the piece is still too big: **heading → paragraph → sentence → token window**.',
+          'A short section stays whole; a long one gets broken along seams the author already put there.'
+        ],
         example: { before: 'Heading → Paragraph → Sentence', after: 'Descend only while the unit is still too large', mono: true },
         tradeoffs: {
           gains: ['Respects the structure the author wrote', 'Chunks end at natural boundaries', 'Cheap, no model required'],
@@ -424,8 +427,10 @@ export const offlineStages: Stage[] = [
         id: 'structure',
         label: 'Document Structure',
         tagline: 'Chunk along the document tree, not the text',
-        detail:
-          'Parse the document into its actual tree and cut on the boundaries the author already declared: Markdown headings, the HTML DOM, DOCX heading styles, notebook cells. Each chunk then corresponds to a real section rather than to a position in a character stream, and it arrives carrying the heading path that led to it.',
+        detail: [
+          'Parse the document into its actual tree and cut on the boundaries the author already declared: **Markdown headings, HTML DOM, DOCX heading styles, notebook cells**.',
+          'Each chunk then corresponds to a real section rather than to a position in a character stream, and it arrives carrying the heading path that led to it.',
+        ],
         example: {
           beforeLabel: 'Markdown source',
           before: '# Indexing\n## HNSW\nHNSW builds a layered graph...\n## IVF\nIVF partitions the space...',
@@ -583,8 +588,12 @@ export const offlineStages: Stage[] = [
         id: 'parent-child',
         label: 'Parent–Child',
         tagline: 'Search small, return large',
-        detail:
-          'Keep two levels of the same document. Index the small child paragraphs, because short focused text embeds precisely. But when a child matches, hand the LLM its parent section instead, so you get the precision of small chunks and the context of large ones.',
+        detail: [
+          'Keep two levels of the same document:',
+          '- **Index the child:** Small child paragraphs embed precisely.',
+          '- **Return the parent:** When a child matches, hand the LLM its parent section instead.',
+          'This gives you the precision of small chunks with the context of large ones.',
+        ],
         math: [
           {
             title: 'Context budget under parent expansion',

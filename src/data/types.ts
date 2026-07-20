@@ -38,7 +38,7 @@ export interface Variant {
   label: string
   /** One line, shown on the node when this variant is selected. */
   tagline: string
-  detail: string
+  detail: string | string[]
   example?: Example
   math?: MathBlock[]
   figures?: Figure[]

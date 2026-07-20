@@ -170,7 +170,9 @@ export default function DetailPanel({ stage, variantId, onOpenMap }: Props) {
                   <b>{v.label}</b>
                   {v.id === variantId && <span className="active-dot">ACTIVE</span>}
                 </div>
-                <p>{v.detail}</p>
+                <div className="markdown-content">
+                  <ReactMarkdown>{Array.isArray(v.detail) ? v.detail.join('\n\n') : v.detail}</ReactMarkdown>
+                </div>
               </div>
             ))}
           </Section>

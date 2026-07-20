@@ -108,8 +108,8 @@ export const onlineStages: Stage[] = [
     ordinal: '1b',
     tagline: 'Which retrieval strategy fits?',
     detail: [
-      '* **A routing decision, not a plan:** Dense, sparse, hybrid, SQL, plain keyword search, pick the machinery that suits this class of question.',
-      '* **Not an agent:** In vanilla RAG this is a single branch evaluated once. It is emphatically not an agent deliberating over a strategy; that is a different architecture.',
+      '- **A routing decision, not a plan:** Dense, sparse, hybrid, SQL, plain keyword search, pick the machinery that suits this class of question.',
+      '- **Not an agent:** In vanilla RAG this is a single branch evaluated once. It is emphatically not an agent deliberating over a strategy; that is a different architecture.',
     ],
     example: {
       beforeLabel: 'Possible routes',
@@ -125,9 +125,9 @@ export const onlineStages: Stage[] = [
         kind: 'method',
         summary: 'What actually predicts the right route',
         detail: [
-          '**Rare exact tokens**, error codes, part numbers, function names, identifiers, argue for sparse. Dense retrieval is weakest precisely where a token appears a handful of times in the corpus, because a rare term contributes little to a pooled embedding.',
-          '**Conceptual or paraphrase-heavy questions** argue for dense. Aggregations ("how many", "average") argue for SQL against a real database, since no amount of chunk retrieval will let an LLM count reliably.',
-          '**When the signals conflict**, and in a question naming two products while asking a conceptual comparison they often do, hybrid is the answer, which is why hybrid is the sane default.',
+          '- **Rare exact tokens:** Error codes, part numbers, function names, identifiers, argue for sparse. Dense retrieval is weakest precisely where a token appears a handful of times in the corpus, because a rare term contributes little to a pooled embedding.',
+          '- **Conceptual or paraphrase-heavy questions:** Argue for dense. Aggregations ("how many", "average") argue for SQL against a real database, since no amount of chunk retrieval will let an LLM count reliably.',
+          '- **When the signals conflict:** In a question naming two products while asking a conceptual comparison they often do conflict, which is why **hybrid** is the sane default.',
         ],
       },
       {
@@ -170,8 +170,8 @@ export const onlineStages: Stage[] = [
         kind: 'method',
         summary: 'Bind pronouns to earlier entities',
         detail: [
-          '"It", "that one", "the second approach", and bare ellipsis ("and for sparse?") all point at something in the history. Embedding them unresolved retrieves on the pronoun, which carries no information at all.',
-          'Resolve against the last few turns only. Reaching too far back binds to stale entities and produces a fluent rewrite of a question the user did not ask, a failure mode worse than not rewriting, because it is invisible downstream.',
+          '- **Unresolved pronouns fail:** "It", "that one", "the second approach", and bare ellipsis all point at something in the history. Embedding them unresolved retrieves on the pronoun, which carries no information at all.',
+          '- **Resolve against recent turns only:** Reaching too far back binds to stale entities and produces a fluent rewrite of a question the user did not ask. This failure mode is worse than not rewriting, because it is invisible downstream.',
         ],
       },
       {
@@ -208,7 +208,7 @@ export const onlineStages: Stage[] = [
     tagline: 'Add terminology to raise recall',
     detail: [
       'Add synonyms and alternate phrasings so you match documents that discuss the same thing in different words. The classic case is a corpus that uses clinical vocabulary while the user types colloquially.',
-      'This is a recall play, and it costs you precision. Every term you add is another way to match something irrelevant.',
+      '**This is a recall play, and it costs you precision.** Every term you add is another way to match something irrelevant.',
     ],
     example: {
       beforeLabel: 'Query',
@@ -241,9 +241,9 @@ export const onlineStages: Stage[] = [
         kind: 'method',
         summary: 'Ontology, corpus statistics, or LLM',
         detail: [
-          'A curated ontology, SNOMED, MeSH, an internal glossary, is precise and auditable, and in regulated domains it is often the only acceptable option.',
-          'Corpus-derived expansion mines co-occurrence from your own data, so it learns house jargon no public ontology contains. Pseudo-relevance feedback is the classic form: retrieve once, harvest frequent terms from the top results, re-query with them.',
-          'LLM expansion is the most flexible and the least controllable. It invents plausible synonyms that may not appear anywhere in your corpus, adding cost with no recall benefit.',
+          '- **Curated ontology:** SNOMED, MeSH, or an internal glossary. Precise and auditable, and in regulated domains often the only acceptable option.',
+          '- **Corpus-derived:** Mines co-occurrence from your own data, learning house jargon no public ontology contains. (e.g. Pseudo-relevance feedback).',
+          '- **LLM expansion:** The most flexible but least controllable. It invents plausible synonyms that may not appear anywhere in your corpus, adding cost with no recall benefit.',
         ],
         children: [
           {
@@ -271,8 +271,8 @@ export const onlineStages: Stage[] = [
         kind: 'idea',
         summary: 'Mostly not, sparse retrieval does',
         detail: [
-          'Dense retrieval already handles paraphrase: "heart attack" and "myocardial infarction" sit close together in embedding space without help. Expanding a dense query often adds nothing and blurs the vector by averaging in loosely related terms.',
-          'BM25 has no such capability, it matches strings. Expansion is close to mandatory there, which means in a hybrid system the right move is often to expand only the sparse branch.',
+          '- **Dense retrieval handles paraphrase natively:** "heart attack" and "myocardial infarction" sit close together in embedding space. Expanding often adds nothing and blurs the vector.',
+          '- **Sparse retrieval needs it:** BM25 matches strings. Expansion is close to mandatory there, which means in a hybrid system you should often **expand only the sparse branch**.',
         ],
       },
     ],
@@ -289,7 +289,7 @@ export const onlineStages: Stage[] = [
     tagline: 'One question becomes several searches',
     detail: [
       'Rather than searching once, generate several semantically distinct queries covering different facets of the question. Each retrieves independently, and the result sets are merged before reranking.',
-      'It helps most when one phrasing simply cannot reach all the relevant material, a broad question whose answer is scattered across sub-topics.',
+      '**When to use:** It helps most when one phrasing simply cannot reach all the relevant material (e.g. a broad question whose answer is scattered across sub-topics).',
     ],
     example: {
       beforeLabel: 'Query',
@@ -384,7 +384,7 @@ export const onlineStages: Stage[] = [
         summary: 'Four paraphrases retrieve one result set',
         detail: [
           'If the generated variants are near-paraphrases, they retrieve nearly identical chunks and you have paid 4× for nothing. The value comes entirely from variants that reach *different* regions of the corpus.',
-          'Prompt for facets, not rewordings: mechanism, comparison, failure modes, use cases. Then verify, measure the pairwise Jaccard overlap of the retrieved sets, and if it is high the step is not earning its cost.',
+          '**Best Practice:** Prompt for facets, not rewordings (e.g. mechanism, comparison, failure modes). Then measure the pairwise Jaccard overlap of the retrieved sets—if it is high, the step is not earning its cost.',
         ],
         math: [
           {
