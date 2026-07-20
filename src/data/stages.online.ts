@@ -2605,8 +2605,11 @@ structured = ChatOpenAI(model="gpt-4o").with_structured_output(Answer)`,
       },
     ],
     detail: [
-      'Shape the raw output into what the caller expects: format as Markdown, JSON or XML; validate structured output against a schema such as a Pydantic model; attach citations back to the chunks that supported each claim.',
-      'Validation belongs here rather than in the caller because a schema failure is recoverable; you can retry generation with the error appended. Once the response has left the pipeline; it is not.',
+      '**Shape the raw output into what the caller expects:**',
+      '- **Format** as Markdown, JSON, or XML.',
+      '- **Validate** structured output against a schema (e.g., a Pydantic model).',
+      '- **Attach citations** back to the chunks that supported each claim.',
+      '**Validation belongs here rather than in the caller.** A schema failure is recoverable—you can retry generation with the error appended. Once the response has left the pipeline, it is not.',
     ],
     math: [
       {
@@ -2637,8 +2640,15 @@ structured = ChatOpenAI(model="gpt-4o").with_structured_output(Answer)`,
         kind: 'method',
         summary: 'Schema validation and constrained decoding',
         detail: [
-          'Post-hoc validation catches malformed output after paying for the full generation. Constrained decoding prevents it by masking tokens that would violate the grammar at each step, the model cannot emit invalid JSON because those tokens have zero probability.',
+          '**Post-hoc validation** catches malformed output after paying for the full generation.',
+          '**Constrained decoding** prevents it by masking tokens that would violate the grammar at each step. The model cannot emit invalid JSON because those tokens have zero probability.',
           'Constrained decoding is strictly better where supported, since it eliminates the retry loop entirely. Where it is not, validate against the schema and retry with the error message included.',
+        ],
+        stack: [
+          { name: 'Pydantic', what: 'Data validation using Python type hints', url: 'https://docs.pydantic.dev/' },
+          { name: 'Instructor', what: 'Structured extraction for LLMs', url: 'https://python.useinstructor.com/' },
+          { name: 'Outlines', what: 'Generative model structured decoding', url: 'https://outlines-dev.github.io/outlines/' },
+          { name: 'Zod', what: 'TypeScript-first schema validation', url: 'https://zod.dev/' },
         ],
       },
       {
