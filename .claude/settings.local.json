@@ -18,7 +18,9 @@
       "Bash(sed -i 's/^const GAP = 52$/const GAP = 44/' src/data/graph.ts)",
       "Bash(python -c ' *)",
       "Bash(node -e ' *)",
-      "Bash(python -)"
+      "Bash(python -)",
+      "Bash(node fix-splices.mjs)",
+      "Bash(grep -v \"^\\\\s*//\")"
     ]
   }
 }

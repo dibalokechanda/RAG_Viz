@@ -164,7 +164,7 @@ function Canvas() {
             ☰
           </button>
           <h1>RAG Pipeline</h1>
-          <span className="sub">Interactive map — click any stage, or play a query through it</span>
+          <span className="sub">Interactive map. Click any stage, or play a query through it</span>
           <div className="topbar-spacer" />
           <div className="lane-key">
             <span>

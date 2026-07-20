@@ -1,7 +1,7 @@
 import type { Stage } from './types'
 
 /**
- * OFFLINE PATH — runs before anyone asks a question. Its only output is the
+ * OFFLINE PATH, runs before anyone asks a question. Its only output is the
  * vector index, which the online path then reads.
  */
 export const offlineStages: Stage[] = [
@@ -15,7 +15,7 @@ export const offlineStages: Stage[] = [
     tagline: 'The raw corpus',
     detail: [
       'Whatever you are making searchable: PDFs, DOCX, Markdown, HTML, Confluence spaces, GitHub repos, database rows.',
-      'Nothing here is RAG-specific yet. It matters only because every downstream decision — how you chunk, what metadata survives, whether OCR is in the loop — is determined by what these files actually are.',
+      'Nothing here is RAG-specific yet. It matters only because every downstream decision, how you chunk, what metadata survives, whether OCR is in the loop, is determined by what these files actually are.',
     ],
   },
 
@@ -29,7 +29,7 @@ export const offlineStages: Stage[] = [
     tagline: 'Bytes → text, format by format',
     detail: [
       'One loader per source format, each with its own failure modes. The important split is not by file extension but by whether the text is already there.',
-      'A digital PDF has a text layer, so the parser reads it directly. A scanned PDF is images of text — it needs OCR first, and OCR introduces errors that the cleaning stage has to undo.',
+      'A digital PDF has a text layer, so the parser reads it directly. A scanned PDF is images of text; it needs OCR first, and OCR introduces errors that the cleaning stage has to undo.',
       'Markdown loaders are worth calling out separately: they preserve heading hierarchy, and that hierarchy is exactly what recursive and parent–child chunking need later. Losing it here means you cannot get it back.',
     ],
     example: {
@@ -47,7 +47,7 @@ export const offlineStages: Stage[] = [
         summary: 'Text layer already present',
         detail: [
           'PDF, DOCX and HTML carry the characters directly. The parser walks the document object model and emits text plus positional metadata.',
-          'The hard part is not extraction but reading order. A two-column academic paper stores text in the order it was drawn, not the order it is read — naive extraction interleaves the columns and produces fluent nonsense that no downstream stage can detect.',
+          'The hard part is not extraction but reading order. A two-column academic paper stores text in the order it was drawn, not the order it is read, naive extraction interleaves the columns and produces fluent nonsense that no downstream stage can detect.',
         ],
         children: [
           {
@@ -57,7 +57,7 @@ export const offlineStages: Stage[] = [
             summary: 'Two-column layouts interleave silently',
             detail: [
               'Sort text blocks by their bounding boxes rather than by draw order. Cluster on the x-axis to detect columns, then sort within each column by y.',
-              'This failure is invisible in the extracted text — it reads as grammatical English — so it survives cleaning, chunking and embedding, and only shows up as inexplicably poor retrieval.',
+              'This failure is invisible in the extracted text; it reads as grammatical English, so it survives cleaning, chunking and embedding, and only shows up as inexplicably poor retrieval.',
             ],
           },
           {
@@ -103,7 +103,7 @@ export const offlineStages: Stage[] = [
         summary: 'Heading hierarchy is a downstream dependency',
         detail: [
           'Recursive chunking splits on headings; parent–child chunking needs sections to define parents. Both are impossible if loading flattened the document to a character stream.',
-          'Capture the heading path for every block — for example "Chapter 3 › Indexing › HNSW" — and carry it as metadata. It doubles as breadcrumb context in the prompt and as a filter at query time.',
+          'Capture the heading path for every block, for example "Chapter 3 › Indexing › HNSW", and carry it as metadata. It doubles as breadcrumb context in the prompt and as a filter at query time.',
         ],
       },
     ],
@@ -123,7 +123,7 @@ export const offlineStages: Stage[] = [
     ordinal: '2b',
     tagline: 'Capture provenance while you still have it',
     detail: [
-      'Performed during loading, because this is the last moment the information exists. Once a document has been flattened into a wall of text, you cannot recover which page a sentence came from.',
+      'Performed during loading, because this is the last moment the information exists. Once a document has been flattened into a wall of text; you cannot recover which page a sentence came from.',
       'Every chunk later inherits this metadata. That inheritance is what makes citations, page-level filtering, and "only search documents from this year" possible at query time.',
     ],
     example: {
@@ -141,7 +141,7 @@ export const offlineStages: Stage[] = [
         summary: 'Metadata narrows the candidate set',
         detail: [
           'Filters combine with vector search in two ways, and the difference is large.',
-          'Post-filtering retrieves top-K then discards non-matching results — simple, but if the filter is selective you can retrieve 100 and keep 2. Pre-filtering restricts the search to matching vectors first, which preserves K but breaks ANN index assumptions: an HNSW graph whose nodes are mostly masked out loses connectivity and recall collapses.',
+          'Post-filtering retrieves top-K then discards non-matching results, simple, but if the filter is selective you can retrieve 100 and keep 2. Pre-filtering restricts the search to matching vectors first, which preserves K but breaks ANN index assumptions: an HNSW graph whose nodes are mostly masked out loses connectivity and recall collapses.',
         ],
         math: [
           {
@@ -149,7 +149,7 @@ export const offlineStages: Stage[] = [
             tex: String.raw`K_{\text{kept}} = K \times s`,
             where: [
               { sym: String.raw`K`, means: 'documents retrieved before filtering' },
-              { sym: String.raw`s`, means: 'selectivity — fraction of the corpus matching the filter' },
+              { sym: String.raw`s`, means: 'selectivity, fraction of the corpus matching the filter' },
             ],
             worked: [
               { tex: String.raw`K_{\text{kept}} = 100 \times 0.02 = 2`, caption: 'a 2%-selective filter leaves almost nothing' },
@@ -174,7 +174,7 @@ export const offlineStages: Stage[] = [
         kind: 'idea',
         summary: 'Chunks copy their document metadata',
         detail: [
-          'When a document is split, every chunk carries a copy of the document-level fields plus its own chunk-level fields — index, offset range, heading path, token count.',
+          'When a document is split, every chunk carries a copy of the document-level fields plus its own chunk-level fields, index, offset range, heading path, token count.',
           'Denormalising rather than joining at query time matters: a vector store returning a chunk should return everything needed to cite and filter it in the same round trip.',
         ],
       },
@@ -188,10 +188,10 @@ export const offlineStages: Stage[] = [
     phase: 'offline',
     kind: 'sequential',
     ordinal: '2c',
-    tagline: 'Deterministic preprocessing — no LLM',
+    tagline: 'Deterministic preprocessing, no LLM',
     detail: [
       'Strip the artifacts of the source format so they do not become retrievable content: running headers, footers, page numbers, duplicated whitespace, encoding mismatches, OCR garbage.',
-      'This stage is deliberately dumb. It is rules and regexes, not a model. Determinism matters because you want to be able to re-run ingestion and get byte-identical output — otherwise you cannot tell whether a retrieval regression came from your data or your code.',
+      'This stage is deliberately dumb. It is rules and regexes, not a model. Determinism matters because you want to be able to re-run ingestion and get byte-identical output, otherwise you cannot tell whether a retrieval regression came from your data or your code.',
       'Corpus-level near-duplicate removal also belongs here. If the same policy document exists in four revisions, all four will be retrieved together, and they will crowd out everything else in your top-K.',
     ],
     tradeoffs: {
@@ -237,9 +237,9 @@ export const offlineStages: Stage[] = [
               { sym: String.raw`A, B`, means: 'the sets of k-gram shingles of two documents' },
             ],
             worked: [
-              { tex: String.raw`J = \frac{940}{1060} \approx 0.887`, caption: 'two revisions of the same policy — deduplicate' },
+              { tex: String.raw`J = \frac{940}{1060} \approx 0.887`, caption: 'two revisions of the same policy, deduplicate' },
             ],
-            note: 'Computing this for every pair is O(n²). MinHash reduces it to a near-linear approximation — see the deduplication stage.',
+            note: 'Computing this for every pair is O(n²). MinHash reduces it to a near-linear approximation, see the deduplication stage.',
           },
         ],
       },
@@ -259,8 +259,8 @@ export const offlineStages: Stage[] = [
         kind: 'method',
         summary: 'Confusion pairs and broken hyphenation',
         detail: [
-          'Recurring substitutions — rn→m, l→1, O→0 — are correctable with a dictionary check, since the erroneous form is usually not a word.',
-          'De-hyphenate line breaks: "index-\\ning" → "indexing". Left alone, this produces two junk tokens instead of one real one, and the real term becomes unmatchable.',
+          'Recurring substitutions, rn→m, l→1, O→0, are correctable with a dictionary check, since the erroneous form is usually not a word.',
+          'De-hyphenate line breaks: "index-\\ning" → "indexing". Left alone; this produces two junk tokens instead of one real one, and the real term becomes unmatchable.',
         ],
       },
     ],
@@ -275,9 +275,9 @@ export const offlineStages: Stage[] = [
     ordinal: '3',
     tagline: 'Split documents into retrievable units',
     detail: [
-      'The single most consequential design decision in the offline path. A chunk is the unit of retrieval — you cannot retrieve half a chunk, and you cannot retrieve across two of them.',
+      'The single most consequential design decision in the offline path. A chunk is the unit of retrieval; you cannot retrieve half a chunk, and you cannot retrieve across two of them.',
       'The core tension never goes away. Large chunks carry more context but more noise; small chunks are more precise but can sever the sentence from the fact that explains it.',
-      'There is also a dilution effect that is easy to miss. An embedding is roughly an average of what the text is about, so a single relevant sentence inside a large chunk contributes proportionally less to the vector — and the chunk drifts away from the query in embedding space.',
+      'There is also a dilution effect that is easy to miss. An embedding is roughly an average of what the text is about, so a single relevant sentence inside a large chunk contributes proportionally less to the vector, and the chunk drifts away from the query in embedding space.',
       'Worth stating plainly, because it is the thing most often got wrong: chunking decisions are permanent in a way nothing else here is. A bad prompt can be rewritten in a minute; a bad chunking strategy means re-embedding the entire corpus. Sweep it against a labelled query set before committing, not after.',
     ],
     figures: [
@@ -288,17 +288,17 @@ export const offlineStages: Stage[] = [
         rows: [
           { label: 'a fact spanning tokens 470–530', spans: [{ from: 470, to: 530, ghost: true }] },
           {
-            label: 'no overlap — the fact is severed',
+            label: 'no overlap, the fact is severed',
             spans: [
               { from: 0, to: 500, label: 'chunk 1' },
               { from: 500, to: 1000, label: 'chunk 2' },
             ],
           },
-          { label: '50-token overlap — chunk 1', spans: [{ from: 0, to: 500, label: '0–500' }] },
+          { label: '50-token overlap, chunk 1', spans: [{ from: 0, to: 500, label: '0–500' }] },
           { label: 'chunk 2 now starts earlier', spans: [{ from: 450, to: 950, label: '450–950' }] },
         ],
         caption:
-          'Without overlap the boundary at 500 cuts the fact in half, and neither chunk embeds as being about it — so it is retrievable from neither. Sliding chunk 2 back to 450 means it now contains the fact whole. The cost is that tokens 450–500 are stored twice, which is the 11% index growth the formula below quantifies.',
+          'Without overlap the boundary at 500 cuts the fact in half, and neither chunk embeds as being about it, so it is retrievable from neither. Sliding chunk 2 back to 450 means it now contains the fact whole. The cost is that tokens 450–500 are stored twice, which is the 11% index growth the formula below quantifies.',
       },
     ],
     math: [
@@ -312,7 +312,7 @@ export const offlineStages: Stage[] = [
         ],
         worked: [
           { tex: String.raw`n = \left\lceil \frac{10000 - 0}{500 - 0} \right\rceil = 20`, caption: 'c = 500, no overlap' },
-          { tex: String.raw`n = \left\lceil \frac{10000 - 50}{500 - 50} \right\rceil = \lceil 22.11 \rceil = 23`, caption: 'c = 500, o = 50 — 15% more vectors to store' },
+          { tex: String.raw`n = \left\lceil \frac{10000 - 50}{500 - 50} \right\rceil = \lceil 22.11 \rceil = 23`, caption: 'c = 500, o = 50, 15% more vectors to store' },
         ],
       },
       {
@@ -323,7 +323,7 @@ export const offlineStages: Stage[] = [
           { sym: String.raw`t_{\text{chunk}}`, means: 'total tokens in the chunk' },
         ],
         worked: [
-          { tex: String.raw`\frac{40}{200} = 0.20`, caption: 'a 200-token chunk — the answer dominates' },
+          { tex: String.raw`\frac{40}{200} = 0.20`, caption: 'a 200-token chunk, the answer dominates' },
           { tex: String.raw`\frac{40}{2000} = 0.02`, caption: 'the same answer inside a 2000-token chunk' },
         ],
         note: 'This is why simply enlarging chunks to "include more context" degrades retrieval: the relevant sentence stops driving the embedding.',
@@ -339,7 +339,7 @@ export const offlineStages: Stage[] = [
         label: 'Fixed-size',
         tagline: 'Cut every N tokens',
         detail:
-          'Split at a constant token count — 500 tokens, say — regardless of what the text is doing at that point. Simple, fast, completely predictable, and utterly indifferent to meaning. It will happily cut a definition in half.',
+          'Split at a constant token count, 500 tokens, say, regardless of what the text is doing at that point. Simple, fast, completely predictable, and utterly indifferent to meaning. It will happily cut a definition in half.',
         example: { before: 'Document', after: '[0–500] [500–1000] [1000–1500]', mono: true },
         tradeoffs: {
           gains: ['Trivial to implement', 'Uniform chunk sizes', 'Predictable index size'],
@@ -376,7 +376,7 @@ export const offlineStages: Stage[] = [
         ],
         tradeoffs: {
           gains: ['Boundary-straddling facts survive', 'Still simple to implement'],
-          costs: ['Index grows — the overlap is stored twice', 'Duplicate hits need dedup at retrieval'],
+          costs: ['Index grows, the overlap is stored twice', 'Duplicate hits need dedup at retrieval'],
         },
       },
       {
@@ -387,8 +387,79 @@ export const offlineStages: Stage[] = [
           'Split on the largest structural unit first, and only descend if the piece is still too big: heading → paragraph → sentence → token window. A short section stays whole; a long one gets broken along seams the author already put there.',
         example: { before: 'Heading → Paragraph → Sentence', after: 'Descend only while the unit is still too large', mono: true },
         tradeoffs: {
-          gains: ['Respects the structure the author wrote', 'Chunks end at natural boundaries', 'Cheap — no model required'],
-          costs: ['Uneven chunk sizes', 'Needs structure to exist — useless on a wall of text'],
+          gains: ['Respects the structure the author wrote', 'Chunks end at natural boundaries', 'Cheap, no model required'],
+          costs: ['Uneven chunk sizes', 'Needs structure to exist, useless on a wall of text'],
+        },
+      },
+      {
+        id: 'structure',
+        label: 'Document Structure',
+        tagline: 'Chunk along the document tree, not the text',
+        detail:
+          'Parse the document into its actual tree and cut on the boundaries the author already declared: Markdown headings, the HTML DOM, DOCX heading styles, notebook cells. Each chunk then corresponds to a real section rather than to a position in a character stream, and it arrives carrying the heading path that led to it.',
+        example: {
+          beforeLabel: 'Markdown source',
+          before: '# Indexing\n## HNSW\nHNSW builds a layered graph...\n## IVF\nIVF partitions the space...',
+          afterLabel: 'Chunks, each with its heading path',
+          after: 'chunk 1  path: Indexing › HNSW\nchunk 2  path: Indexing › IVF',
+          mono: true,
+        },
+        math: [
+          {
+            title: 'Breadcrumb prefixing',
+            tex: String.raw`\text{chunk}' = \underbrace{h_1 \;\rangle\; h_2 \;\rangle\; \dots}_{\text{heading path}} \;+\; \text{chunk}`,
+            note: 'Prepending the heading path to the chunk text before embedding is the trick that makes this pay. A section that says "it partitions the space into cells" is ambiguous alone; prefixed with "Indexing › IVF" it embeds as being about IVF, and becomes retrievable by a query naming IVF.',
+          },
+          {
+            title: 'Sections do not respect your token budget',
+            tex: String.raw`|s| \sim \text{highly variable}`,
+            worked: [
+              { tex: String.raw`\text{a definition section} \approx 40\ \text{tokens}` },
+              { tex: String.raw`\text{a tutorial section} \approx 4000\ \text{tokens}`, caption: 'far past any sensible chunk size' },
+            ],
+            note: 'So this is almost always layered with recursive splitting: cut on structure first, then recursively split any section that is still too large, and merge trivially small ones into their neighbour.',
+          },
+        ],
+        figures: [
+          {
+            kind: 'blocks',
+            title: 'Tree first, then size',
+            rows: [
+              { label: 'parse', boxes: [{ text: 'document tree: headings, lists, tables, code' }], arrow: 'split at section boundaries' },
+              {
+                boxes: [
+                  { text: '§1 short' },
+                  { text: '§2 oversized' },
+                  { text: '§3 short' },
+                ],
+                arrow: 'recursively split only what is too large',
+              },
+              {
+                boxes: [
+                  { text: '§1' },
+                  { text: '§2a' },
+                  { text: '§2b' },
+                  { text: '§3' },
+                ],
+                arrow: 'attach heading path to each',
+              },
+              { boxes: [{ text: 'chunks that know which section they came from', filled: true }] },
+            ],
+            caption:
+              'Atomic units are never split. A table or a fenced code block is kept whole even when it pushes a chunk over the target size, because half a table retrieves as noise and half a code block does not run. That is the main practical difference from a purely size-driven splitter.',
+          },
+        ],
+        tradeoffs: {
+          gains: [
+            'Chunks align with what the author considered one topic',
+            'Heading path is free metadata, useful for both embedding and filtering',
+            'Tables and code blocks stay intact',
+          ],
+          costs: [
+            'Useless on documents with no structure, plain text, bad OCR, scanned PDFs',
+            'Section sizes vary wildly, so it needs a recursive pass behind it',
+            'Structure quality is inherited from the loader',
+          ],
         },
       },
       {
@@ -396,7 +467,7 @@ export const offlineStages: Stage[] = [
         label: 'Semantic',
         tagline: 'Split where the topic changes',
         detail:
-          'Boundaries come from meaning, not from counting. Split into sentences or paragraphs, embed each one, walk the sequence comparing neighbours, and cut wherever similarity drops sharply — a sharp drop is the signal that the topic moved.',
+          'Boundaries come from meaning, not from counting. Split into sentences or paragraphs, embed each one, walk the sequence comparing neighbours, and cut wherever similarity drops sharply, a sharp drop is the signal that the topic moved.',
         figures: [
           {
             kind: 'curve',
@@ -443,7 +514,7 @@ export const offlineStages: Stage[] = [
               { at: 1, label: '1' },
             ],
             caption:
-              'The dashed line is the threshold τ = μ − ασ, computed from this document’s own distribution rather than fixed in advance — which is what makes the method portable across corpora with different baseline similarity. Two pairs fall below it, giving three chunks of unequal length. Note that the chunk boundaries land where the author changed subject, not at any token count.',
+              'The dashed line is the threshold τ = μ − ασ, computed from this document’s own distribution rather than fixed in advance, which is what makes the method portable across corpora with different baseline similarity. Two pairs fall below it, giving three chunks of unequal length. Note that the chunk boundaries land where the author changed subject, not at any token count.',
           },
         ],
         math: [
@@ -464,7 +535,7 @@ export const offlineStages: Stage[] = [
           {
             title: 'Cost of building it',
             tex: String.raw`C = N_{\text{units}} \times c_{\text{embed}}`,
-            note: 'Every sentence must be embedded before you know where the chunks are — then the chunks themselves are embedded. Roughly double the ingestion cost of any counting-based method.',
+            note: 'Every sentence must be embedded before you know where the chunks are, then the chunks themselves are embedded. Roughly double the ingestion cost of any counting-based method.',
           },
         ],
         example: {
@@ -484,7 +555,7 @@ export const offlineStages: Stage[] = [
         label: 'Parent–Child',
         tagline: 'Search small, return large',
         detail:
-          'Keep two levels of the same document. Index the small child paragraphs, because short focused text embeds precisely. But when a child matches, hand the LLM its parent section instead — so you get the precision of small chunks and the context of large ones.',
+          'Keep two levels of the same document. Index the small child paragraphs, because short focused text embeds precisely. But when a child matches, hand the LLM its parent section instead, so you get the precision of small chunks and the context of large ones.',
         math: [
           {
             title: 'Context budget under parent expansion',
@@ -496,20 +567,26 @@ export const offlineStages: Stage[] = [
               { tex: String.raw`K = 10,\ |p| \approx 2000 \Rightarrow T \le 20{,}000\ \text{tokens}`, caption: 'worst case: ten distinct parents' },
               { tex: String.raw`\text{after deduplicating parents: } 4 \times 2000 = 8000`, caption: 'children often share a parent' },
             ],
-            note: 'Deduplicating parents is mandatory, not optional — several children of the same section are the common case, and sending that section repeatedly wastes budget and double-counts the evidence.',
+            note: 'Deduplicating parents is mandatory, not optional, several children of the same section are the common case, and sending that section repeatedly wastes budget and double-counts the evidence.',
           },
         ],
         example: {
           beforeLabel: 'Indexed & searched',
-          before: 'Child — small paragraph (≈200 tokens)',
+          before: 'Child, small paragraph (≈200 tokens)',
           afterLabel: 'Retrieved & sent to the LLM',
-          after: 'Parent — the whole surrounding section (≈2000 tokens)',
+          after: 'Parent, the whole surrounding section (≈2000 tokens)',
           mono: true,
         },
         tradeoffs: {
           gains: ['Sidesteps the precision-vs-context tradeoff', 'Strong on structured docs'],
           costs: ['Two-tier bookkeeping', 'Parents can blow the context budget fast'],
         },
+      },
+    ],
+    distinctions: [
+      {
+        title: 'Recursive vs. document structure',
+        body: 'Recursive chunking works on a string with an ordered list of separators, trying paragraph breaks, then sentences, then a token window, and descending only when a piece is still too big. It never parses the document; it just knows that blank lines usually separate paragraphs. Document-structure chunking parses the file into a real tree first and cuts on the boundaries the author declared, which is why it can carry a heading path and refuse to split a table. On clean Markdown or HTML they often produce similar chunks; on a document where the separators lie, only the parser is right. In practice they are layered rather than chosen between.',
       },
     ],
     concepts: [
@@ -540,7 +617,7 @@ export const offlineStages: Stage[] = [
         summary: 'Sweep chunk size against recall@K',
         detail: [
           'There is no universal best chunk size. Build a small set of question–answer pairs where you know which chunk should be retrieved, then sweep chunk size and measure recall@K on that set.',
-          'The curve is usually flat-topped with a clear falloff on both sides. Pick the middle of the plateau rather than the peak — the peak is noise on a small evaluation set.',
+          'The curve is usually flat-topped with a clear falloff on both sides. Pick the middle of the plateau rather than the peak, the peak is noise on a small evaluation set.',
         ],
       },
       {
@@ -549,7 +626,7 @@ export const offlineStages: Stage[] = [
         kind: 'pitfall',
         summary: 'Count with the model’s own tokenizer',
         detail: [
-          'Splitting on character count produces chunks whose token count varies by a factor of three or more across languages and content types — code and non-Latin scripts are far denser per character than English prose.',
+          'Splitting on character count produces chunks whose token count varies by a factor of three or more across languages and content types, code and non-Latin scripts are far denser per character than English prose.',
           'Since both the embedding model and the LLM have token limits, count tokens with the same tokenizer the model uses. Chunks sized in characters will silently exceed the embedding model’s window and get truncated, discarding the tail.',
         ],
       },
@@ -570,7 +647,7 @@ export const offlineStages: Stage[] = [
     tagline: 'Every chunk becomes a dense vector',
     detail: [
       'Each chunk goes through the embedding model and comes out as a fixed-length vector. Semantic similarity becomes geometric proximity, which is what makes approximate search possible at all.',
-      'Re-embedding has two very different costs, and confusing them is expensive. Adding new documents means embedding only the new chunks. Changing the embedding model means re-embedding the entire corpus — old and new vectors live in different spaces and cannot be compared.',
+      'Re-embedding has two very different costs, and confusing them is expensive. Adding new documents means embedding only the new chunks. Changing the embedding model means re-embedding the entire corpus, old and new vectors live in different spaces and cannot be compared.',
     ],
     math: [
       {
@@ -580,7 +657,7 @@ export const offlineStages: Stage[] = [
           { sym: String.raw`q, d`, means: 'query and document vectors' },
           { sym: String.raw`n`, means: 'embedding dimension' },
         ],
-        note: 'Bounded in [−1, 1]. Because it divides out magnitude, it measures direction only — which is what you want when chunk lengths differ.',
+        note: 'Bounded in [−1, 1]. Because it divides out magnitude, it measures direction only, which is what you want when chunk lengths differ.',
       },
       {
         title: 'Why normalised vectors let you use inner product',
@@ -597,7 +674,7 @@ export const offlineStages: Stage[] = [
         ],
         worked: [
           { tex: String.raw`S = 10^6 \times 1536 \times 4 = 6.14\ \text{GB}`, caption: 'one million chunks at 1536-d' },
-          { tex: String.raw`S = 10^8 \times 1536 \times 4 = 614\ \text{GB}`, caption: 'a hundred million — now compression is not optional' },
+          { tex: String.raw`S = 10^8 \times 1536 \times 4 = 614\ \text{GB}`, caption: 'a hundred million, now compression is not optional' },
         ],
       },
     ],
@@ -611,12 +688,61 @@ export const offlineStages: Stage[] = [
     concepts: [
       {
         id: 'emb-asymmetry',
-        label: 'Asymmetric embedding',
+        label: 'Symmetric vs. asymmetric',
         kind: 'idea',
-        summary: 'Queries and documents are different shapes',
+        summary: 'What the two sides of the comparison look like',
         detail: [
-          'A query is a short interrogative; a document is a long declarative paragraph. Models trained with a single encoder place these in systematically different regions, so a question is never quite close to its own answer.',
-          'Two fixes. Instruction-prefixed models expect a marker such as "query:" or "passage:" and shift the representation accordingly — omitting the prefix measurably degrades recall. HyDE attacks the same gap from the other direction by turning the query into a document before embedding it.',
+          'Embedding tasks divide by whether the two things being compared are the same kind of text. In a symmetric task they are: sentence against sentence, question against question, paragraph against paragraph. Semantic textual similarity, near-duplicate detection and clustering are all symmetric. In an asymmetric task they are not: a short interrogative on one side, a long declarative passage on the other.',
+          'RAG retrieval is asymmetric, and this is the single most common mismatch in a first RAG build. A model tuned for sentence similarity is measuring "do these two sentences mean the same thing", which is not the question being asked. The question being asked is "does this passage answer this query", and a passage that answers a question rarely resembles it.',
+          'The gap is structural rather than a matter of vocabulary. "How do I reset my password?" and a paragraph explaining the reset procedure share few tokens and have different length, register and grammatical mood. A symmetric objective pushes them apart because they are, as sentences, dissimilar.',
+          'Three ways this gets handled. Train asymmetrically, using query and passage pairs so the objective matches the task. Mark the sides explicitly with instruction prefixes so one encoder can serve both roles. Or change the shape of the input at query time, which is what HyDE does by writing a passage-shaped hypothetical, and what doc2query does from the other end by attaching generated questions to each chunk.',
+        ],
+        math: [
+          {
+            title: 'Two objectives, two different things being learned',
+            tex: String.raw`\text{symmetric: } \text{sim}(a, b) \approx \text{sim}(b, a) \ \text{over like inputs}`,
+            worked: [
+              { tex: String.raw`\text{asymmetric: } f_{q}(q) \cdot f_{d}(d) \ \text{where } f_q \neq f_d \ \text{in role}` },
+            ],
+            note: 'Even when one shared encoder is used, the prefix makes the two roles distinguishable, so the model can learn a direction rather than a symmetric distance.',
+          },
+        ],
+        figures: [
+          {
+            kind: 'blocks',
+            title: 'Same encoder, different roles',
+            rows: [
+              { label: 'symmetric task', boxes: [{ text: 'sentence A' }, { text: 'sentence B' }], arrow: 'same shape, same role' },
+              { boxes: [{ text: 'are these two the same thing?', filled: true }] },
+              { label: 'asymmetric task', boxes: [{ text: '"query: ..." (short)' }, { text: '"passage: ..." (long)' }], arrow: 'different shape, different role' },
+              { boxes: [{ text: 'does this passage answer this query?', filled: true }] },
+            ],
+            caption:
+              'The prefixes are not decoration. They tell the model which role the text is playing, which is what lets one encoder produce a direction-aware score rather than a symmetric distance. Applying the same prefix to both sides collapses an asymmetric model back into a symmetric one.',
+          },
+        ],
+        children: [
+          {
+            id: 'emb-prefix-detail',
+            label: 'Getting the prefixes right',
+            kind: 'pitfall',
+            summary: 'Silent recall loss, no error anywhere',
+            detail: [
+              'Models in the E5 and BGE families expect "query: " on the query side and "passage: " on the document side; newer instruction-tuned models take a natural-language task description instead. Whatever the convention, it was present during training and the representation shifts with it.',
+              'Every failure mode here is silent. Omitting the prefixes gives degraded but plausible results. Applying "query: " to both sides gives degraded but plausible results. Indexing with one convention and querying with another gives degraded but plausible results. Nothing errors, and the numbers only look wrong if you were measuring recall against a golden set.',
+              'Assert it in code rather than trusting a convention, and store the prefix convention alongside the model id in the artifact manifest so a mismatch is detectable rather than merely suspected.',
+            ],
+          },
+          {
+            id: 'emb-symmetric-uses',
+            label: 'When symmetric is what you want',
+            kind: 'method',
+            summary: 'Not every embedding in the system is for retrieval',
+            detail: [
+              'Several stages here compare like with like, and those are genuinely symmetric. Semantic chunking compares neighbouring paragraphs. Deduplication compares chunk against chunk. A semantic cache compares an incoming query against stored queries.',
+              'Using an asymmetric retrieval model for those is a mild mismatch in the other direction, though usually a tolerable one. The case worth being deliberate about is the semantic cache, where the comparison is query against query and the threshold is doing safety-critical work, so a model that is actually good at sentence similarity is the right choice.',
+            ],
+          },
         ],
       },
       {
@@ -625,14 +751,80 @@ export const offlineStages: Stage[] = [
         kind: 'tradeoff',
         summary: 'More dimensions, more cost, diminishing returns',
         detail: [
-          'Retrieval quality rises with dimension but flattens quickly, while memory and search cost rise linearly forever.',
-          'Matryoshka-trained embeddings let you truncate a 1536-d vector to 512-d and keep most of the quality, because the training loss front-loads information into the early dimensions. That turns dimension into a runtime dial rather than a model-selection decision.',
+          'Retrieval quality rises with dimension but flattens quickly, while memory and search cost rise linearly forever. Doubling from 768 to 1536 rarely doubles anything except the bill.',
+          'The question is normally settled at model-selection time, because truncating an ordinary embedding destroys it. Matryoshka training changes that, and turns dimension into a runtime dial.',
         ],
         math: [
           {
             title: 'Truncation saving',
             tex: String.raw`\frac{S_{512}}{S_{1536}} = \frac{512}{1536} = 0.333`,
-            note: 'A third of the memory and a third of the distance-computation work, typically for a low-single-digit percentage drop in recall.',
+            note: 'A third of the memory and a third of the distance-computation work. Whether that costs you recall depends entirely on how the model was trained.',
+          },
+        ],
+        children: [
+          {
+            id: 'emb-mrl',
+            label: 'Matryoshka Representation Learning',
+            kind: 'method',
+            summary: 'Every prefix of the vector is itself a valid embedding',
+            detail: [
+              'In an ordinary embedding the information is spread across all dimensions with no particular ordering, so the first 64 numbers mean nothing on their own. Cutting the vector short does not give you a smaller embedding; it gives you a broken one.',
+              'Matryoshka Representation Learning changes the training objective so that nested prefixes are each trained to work as standalone embeddings. The loss is applied at several dimensionalities at once, typically 64, 128, 256, 512, 1024 and the full width, and summed. The model is therefore pushed to put the coarsest, most discriminative structure in the earliest dimensions and to use later dimensions for progressively finer distinctions. The name is the point: each prefix is a smaller complete doll nested inside the next.',
+              'The practical consequence is that one stored vector serves many budgets. You embed once at full width, then truncate at read time to whatever the situation can afford, and you renormalise after truncating because slicing changes the vector length.',
+              'This enables adaptive retrieval, which is the pattern worth knowing. Shortlist over the whole corpus using a short prefix, which is cheap in both memory and distance computation, then re-score only that shortlist using the full vectors you already have. It is the same shortlist-then-refine shape as quantisation with re-scoring, except the fidelity dial is dimensions rather than bits, and unlike quantisation it needs no codebook and no training pass of your own.',
+            ],
+            math: [
+              {
+                title: 'The training objective, in outline',
+                tex: String.raw`\mathcal{L} = \sum_{d \in \mathcal{D}} w_d \cdot \mathcal{L}_{\text{contrastive}}\big(x_{1:d}\big)`,
+                where: [
+                  { sym: String.raw`\mathcal{D}`, means: 'nested widths, e.g. {64, 128, 256, 512, 1024, 1536}' },
+                  { sym: String.raw`x_{1:d}`, means: 'the first d components of the embedding' },
+                ],
+                note: 'One model, one forward pass, but the loss is evaluated on every prefix. Nothing at inference time is special; the structure was baked in during training.',
+              },
+              {
+                title: 'Truncate, then renormalise',
+                tex: String.raw`\hat{x}_{1:d} = \frac{x_{1:d}}{\lVert x_{1:d} \rVert}`,
+                note: 'A prefix of a unit vector is not a unit vector. Skipping the renormalisation quietly biases inner-product search toward whichever vectors happened to keep more of their magnitude in the early dimensions.',
+              },
+              {
+                title: 'Adaptive retrieval cost',
+                tex: String.raw`C = \underbrace{N \cdot d_{\text{short}}}_{\text{shortlist}} + \underbrace{K' \cdot d_{\text{full}}}_{\text{re-score}}`,
+                worked: [
+                  { tex: String.raw`10^6 \times 128 = 1.28 \times 10^8`, caption: 'shortlist the corpus at 128-d' },
+                  { tex: String.raw`200 \times 1536 = 3.07 \times 10^5`, caption: 're-score 200 candidates at full width' },
+                  { tex: String.raw`\text{vs } 10^6 \times 1536 = 1.54 \times 10^9`, caption: 'roughly 12x less work than full-width search' },
+                ],
+              },
+            ],
+            figures: [
+              {
+                kind: 'bars',
+                title: 'Recall retained after truncating to d',
+                categories: ['64', '128', '256', '512', '1536'],
+                showValues: true,
+                yMax: 1,
+                series: [
+                  { label: 'Matryoshka', values: [0.87, 0.93, 0.97, 0.99, 1.0] },
+                  { label: 'naive cut', values: [0.21, 0.34, 0.52, 0.71, 1.0] },
+                ],
+                caption:
+                  'Illustrative shape rather than measured numbers, but the gap is the real finding. Truncating a Matryoshka embedding degrades gently, so 256 dimensions is often close enough to use for the first pass. Truncating a conventional embedding collapses, because nothing ever asked the early dimensions to be sufficient on their own.',
+              },
+            ],
+            tradeoffs: {
+              gains: [
+                'One stored vector serves every dimension budget',
+                'Shortlist cheaply, re-score at full width, no extra storage',
+                'Dimension becomes a deployment decision, not a model-selection one',
+              ],
+              costs: [
+                'Only works if the model was trained this way',
+                'Prefixes must be renormalised after slicing',
+                'Full-width vectors still have to be stored somewhere for the re-score pass',
+              ],
+            },
           },
         ],
       },
@@ -642,13 +834,13 @@ export const offlineStages: Stage[] = [
         kind: 'formula',
         summary: 'Cosine, inner product, or L2',
         detail: [
-          'Use whichever metric the model was trained with — this is not a free choice. A model trained with a cosine objective will underperform under L2 and vice versa.',
+          'Use whichever metric the model was trained with; this is not a free choice. A model trained with a cosine objective will underperform under L2 and vice versa.',
         ],
         math: [
           {
             title: 'Squared Euclidean distance',
             tex: String.raw`\lVert q - d \rVert^2 = \lVert q \rVert^2 + \lVert d \rVert^2 - 2\,q \cdot d`,
-            note: 'On normalised vectors the first two terms are both 1, so ‖q − d‖² = 2 − 2·cos(q,d). L2 and cosine then rank identically — the choice only matters when vectors are not normalised.',
+            note: 'On normalised vectors the first two terms are both 1, so ‖q − d‖² = 2 − 2·cos(q,d). L2 and cosine then rank identically, the choice only matters when vectors are not normalised.',
           },
         ],
       },
@@ -679,20 +871,20 @@ export const offlineStages: Stage[] = [
     tagline: 'Which vectors get compared at all',
     detail: [
       'Exhaustive search compares the query against every vector: exact, and linear in corpus size. An Approximate Nearest Neighbour structure trades a sliver of recall for orders of magnitude in speed by ruling out most of the corpus without looking at it.',
-      'This axis answers one question only: which subset of vectors do we actually score? How those vectors are *stored* is a separate, independent decision — that is compression, the next stage.',
+      'This axis answers one question only: which subset of vectors do we actually score? How those vectors are *stored* is a separate, independent decision; that is compression, the next stage.',
     ],
     math: [
       {
         title: 'Recall@K of the index itself',
         tex: String.raw`\text{recall}_{\text{ANN}} = \frac{|\text{ANN top-}K \cap \text{exact top-}K|}{K}`,
-        note: 'Measured against brute-force ground truth on a sample. This is the number every ANN parameter trades against latency — and it is distinct from the retrieval recall you measure against human relevance labels.',
+        note: 'Measured against brute-force ground truth on a sample. This is the number every ANN parameter trades against latency, and it is distinct from the retrieval recall you measure against human relevance labels.',
       },
     ],
     variants: [
       {
         id: 'flat',
         label: 'Flat',
-        tagline: 'Exhaustive — compare against everything',
+        tagline: 'Exhaustive, compare against everything',
         detail:
           'No index at all: score the query against every vector and sort. Recall is exactly 1.0 by definition, because this *is* the ground truth. Perfectly reasonable below roughly a million vectors, especially with SIMD-accelerated distance kernels.',
         math: [
@@ -701,7 +893,7 @@ export const offlineStages: Stage[] = [
             tex: String.raw`C_{\text{flat}} = N \times n`,
             worked: [
               { tex: String.raw`C = 10^6 \times 1536 = 1.54 \times 10^9\ \text{multiply-adds}`, caption: 'a few milliseconds with SIMD' },
-              { tex: String.raw`C = 10^8 \times 1536 = 1.54 \times 10^{11}`, caption: 'now it is seconds — you need a real index' },
+              { tex: String.raw`C = 10^8 \times 1536 = 1.54 \times 10^{11}`, caption: 'now it is seconds, you need a real index' },
             ],
           },
         ],
@@ -715,14 +907,14 @@ export const offlineStages: Stage[] = [
         label: 'IVF',
         tagline: 'Partition into cells, search only a few',
         detail:
-          'Inverted File index. Run k-means over the corpus to learn nlist centroids, and assign every vector to its nearest one. At query time, find the nprobe centroids closest to the query and search only those cells — ignoring the rest of the corpus entirely.',
+          'Inverted File index. Run k-means over the corpus to learn nlist centroids, and assign every vector to its nearest one. At query time, find the nprobe centroids closest to the query and search only those cells, ignoring the rest of the corpus entirely.',
         math: [
           {
             title: 'Vectors actually scanned',
             tex: String.raw`N_{\text{scan}} \approx N \times \frac{n_{\text{probe}}}{n_{\text{list}}}`,
             where: [
               { sym: String.raw`n_{\text{list}}`, means: 'number of cells (a common heuristic is √N)' },
-              { sym: String.raw`n_{\text{probe}}`, means: 'cells searched per query — the recall/speed dial' },
+              { sym: String.raw`n_{\text{probe}}`, means: 'cells searched per query, the recall/speed dial' },
             ],
             worked: [
               { tex: String.raw`N_{\text{scan}} = 10^7 \times \tfrac{16}{4096} \approx 39{,}063`, caption: '256× fewer comparisons than exhaustive' },
@@ -741,7 +933,7 @@ export const offlineStages: Stage[] = [
         label: 'HNSW',
         tagline: 'Hierarchical navigable small-world graph',
         detail:
-          'A multi-layer proximity graph. Each vector is inserted with a randomly chosen maximum layer, so upper layers are sparse and lower layers dense. Search enters at the top, greedily walks toward the query, then descends — long hops first, fine refinement last.',
+          'A multi-layer proximity graph. Each vector is inserted with a randomly chosen maximum layer, so upper layers are sparse and lower layers dense. Search enters at the top, greedily walks toward the query, then descends, long hops first, fine refinement last.',
         math: [
           {
             title: 'Layer assignment',
@@ -757,7 +949,7 @@ export const offlineStages: Stage[] = [
             note: 'Versus O(N) exhaustive and O(N·nprobe/nlist) for IVF. This is why HNSW dominates at high recall targets.',
           },
           {
-            title: 'Memory — graph edges on top of the vectors',
+            title: 'Memory, graph edges on top of the vectors',
             tex: String.raw`S_{\text{graph}} \approx N \times M \times 2 \times 4\ \text{bytes}`,
             where: [{ sym: String.raw`M`, means: 'edges per node per layer, typically 16–64' }],
             worked: [
@@ -768,7 +960,7 @@ export const offlineStages: Stage[] = [
         ],
         tradeoffs: {
           gains: ['Best recall-per-millisecond at high recall', 'No training pass', 'Incremental inserts', 'ef_search tunable at query time'],
-          costs: ['Largest memory footprint', 'Deletes only tombstone — space reclaims on rebuild', 'Slow to build'],
+          costs: ['Largest memory footprint', 'Deletes only tombstone, space reclaims on rebuild', 'Slow to build'],
         },
       },
     ],
@@ -779,7 +971,7 @@ export const offlineStages: Stage[] = [
         kind: 'method',
         summary: 'Build-time vs. query-time parameters',
         detail: [
-          'Query-time parameters are the ones you can move in production: nprobe for IVF, ef_search for HNSW. Both trade latency for recall along a smooth curve, and both can be adjusted per request — spend more on high-value queries, less on autocomplete.',
+          'Query-time parameters are the ones you can move in production: nprobe for IVF, ef_search for HNSW. Both trade latency for recall along a smooth curve, and both can be adjusted per request, spend more on high-value queries, less on autocomplete.',
           'Build-time parameters are commitments: nlist for IVF, M and ef_construction for HNSW. Changing them means a full rebuild, so pick them from a benchmark on representative data rather than from folklore.',
         ],
         children: [
@@ -803,7 +995,7 @@ export const offlineStages: Stage[] = [
                 title: 'Common heuristic',
                 tex: String.raw`n_{\text{list}} \approx \sqrt{N}`,
                 worked: [{ tex: String.raw`N = 10^7 \Rightarrow n_{\text{list}} \approx 3162 \rightarrow 4096`, caption: 'rounded to a power of two' }],
-                note: 'Too few cells and each is huge, so scanning one is expensive. Too many and vectors per cell get thin, so recall needs a larger nprobe — cancelling the benefit.',
+                note: 'Too few cells and each is huge, so scanning one is expensive. Too many and vectors per cell get thin, so recall needs a larger nprobe, cancelling the benefit.',
               },
             ],
           },
@@ -816,7 +1008,7 @@ export const offlineStages: Stage[] = [
         summary: 'High dimensions break exact methods',
         detail: [
           'Classical exact structures such as k-d trees degrade to exhaustive scan above roughly 20 dimensions. Embeddings have hundreds or thousands, so exact spatial indexing is simply off the table.',
-          'ANN methods sidestep this by abandoning the guarantee. They find the true nearest neighbours *usually* — and since retrieval feeds a reranker and then an LLM, occasionally missing the 9th-best chunk costs far less than a linear scan.',
+          'ANN methods sidestep this by abandoning the guarantee. They find the true nearest neighbours *usually*, and since retrieval feeds a reranker and then an LLM, occasionally missing the 9th-best chunk costs far less than a linear scan.',
         ],
       },
       {
@@ -825,7 +1017,7 @@ export const offlineStages: Stage[] = [
         kind: 'pitfall',
         summary: 'Every structure handles churn differently',
         detail: [
-          'Flat is trivial: append and remove. IVF assigns new vectors to existing centroids, which is cheap but drifts — as the corpus evolves the learned partition stops matching the data and recall decays until you retrain.',
+          'Flat is trivial: append and remove. IVF assigns new vectors to existing centroids, which is cheap but drifts, as the corpus evolves the learned partition stops matching the data and recall decays until you retrain.',
           'HNSW cannot truly delete. Removals are tombstoned and skipped during search, so memory is never reclaimed and the graph slowly fills with holes that lengthen every walk. A corpus with heavy churn needs periodic rebuilds regardless of which structure you chose.',
         ],
       },
@@ -844,9 +1036,9 @@ export const offlineStages: Stage[] = [
     phase: 'offline',
     kind: 'choice',
     ordinal: '5b',
-    tagline: 'How each vector is stored — orthogonal to the index',
+    tagline: 'How each vector is stored, orthogonal to the index',
     detail: [
-      'Quantisation is not an indexing method. It does not decide which vectors to compare; it decides how many bytes each one occupies and how its distance is approximated. That is why it composes with any index structure — IVF-PQ and HNSW-PQ are both ordinary combinations, not distinct algorithms.',
+      'Quantisation is not an indexing method. It does not decide which vectors to compare; it decides how many bytes each one occupies and how its distance is approximated. That is why it composes with any index structure, IVF-PQ and HNSW-PQ are both ordinary combinations, not distinct algorithms.',
       'The reason to care is that memory, not compute, is what stops vector search from scaling. A hundred million 1536-d float32 vectors is 614 GB, which is a fleet of machines. At 64× compression it is under 10 GB, which is one.',
       'Every compression scheme is lossy, so distances become estimates and recall drops. The standard remedy is a two-pass search: shortlist on compressed vectors, then re-score that shortlist against the exact ones.',
     ],
@@ -868,7 +1060,7 @@ export const offlineStages: Stage[] = [
         yMax: 6144,
         series: [{ label: '', values: [6144, 1536, 192, 96] }],
         caption:
-          'The same vector under each scheme. SQ8 is the one most teams should be using and are not — a quarter of the memory for a recall loss usually lost in measurement noise. PQ and binary are different tools: they are so lossy that both effectively require a second pass re-scoring the shortlist against exact vectors, which is fine, because you only re-score a few hundred candidates per query.',
+          'The same vector under each scheme. SQ8 is the one most teams should be using and are not, a quarter of the memory for a recall loss usually lost in measurement noise. PQ and binary are different tools: they are so lossy that both effectively require a second pass re-scoring the shortlist against exact vectors, which is fine, because you only re-score a few hundred candidates per query.',
       },
     ],
     variants: [
@@ -895,7 +1087,7 @@ export const offlineStages: Stage[] = [
         label: 'Scalar (SQ8)',
         tagline: 'float32 → int8, per dimension',
         detail:
-          'Map each dimension independently onto 256 levels between its observed minimum and maximum. Four times smaller, cheap to compute, and typically costs well under one percent of recall — the best effort-to-benefit ratio available.',
+          'Map each dimension independently onto 256 levels between its observed minimum and maximum. Four times smaller, cheap to compute, and typically costs well under one percent of recall, the best effort-to-benefit ratio available.',
         math: [
           {
             title: 'Quantise and reconstruct',
@@ -914,7 +1106,7 @@ export const offlineStages: Stage[] = [
         ],
         tradeoffs: {
           gains: ['4× smaller', 'Negligible recall loss', 'Fast, and trivial to implement'],
-          costs: ['Only 4× — not enough at very large scale', 'Outlier dimensions widen the range and coarsen everything else'],
+          costs: ['Only 4×, not enough at very large scale', 'Outlier dimensions widen the range and coarsen everything else'],
         },
       },
       {
@@ -922,7 +1114,7 @@ export const offlineStages: Stage[] = [
         label: 'Product Quantisation',
         tagline: 'Split into subvectors, replace each with a codebook id',
         detail:
-          'Cut the vector into m contiguous subvectors. Run k-means separately within each subspace to learn 2^b centroids, and store only which centroid each subvector landed on. A 1536-d vector becomes m bytes — you are no longer storing the vector at all, only a list of "which of 256 prototypes did this slice most resemble".',
+          'Cut the vector into m contiguous subvectors. Run k-means separately within each subspace to learn 2^b centroids, and store only which centroid each subvector landed on. A 1536-d vector becomes m bytes; you are no longer storing the vector at all, only a list of "which of 256 prototypes did this slice most resemble".',
         figures: [
           {
             kind: 'blocks',
@@ -953,10 +1145,10 @@ export const offlineStages: Stage[] = [
                 ],
                 arrow: 'keep only the ids',
               },
-              { boxes: [{ text: '96 bytes — 64× smaller', filled: true }] },
+              { boxes: [{ text: '96 bytes, 64× smaller', filled: true }] },
             ],
             caption:
-              'Each slice is quantised by its own independent codebook, learned only over those 16 dimensions. The stored vector is 96 single-byte ids. Note what this buys at query time: precompute the distance from the query to all 256 centroids in each subspace once, and scoring any database vector becomes 96 table lookups and 96 additions — no floating-point multiplies at all.',
+              'Each slice is quantised by its own independent codebook, learned only over those 16 dimensions. The stored vector is 96 single-byte ids. Note what this buys at query time: precompute the distance from the query to all 256 centroids in each subspace once, and scoring any database vector becomes 96 table lookups and 96 additions, no floating-point multiplies at all.',
           },
         ],
         math: [
@@ -981,7 +1173,7 @@ export const offlineStages: Stage[] = [
           {
             title: 'Expressive power of the codebook',
             tex: String.raw`(2^b)^m = 256^{96} \approx 10^{231}`,
-            note: 'The representable set is astronomically large despite only 96 bytes — this is why PQ beats naively quantising all 1536 dimensions at once.',
+            note: 'The representable set is astronomically large despite only 96 bytes; this is why PQ beats naively quantising all 1536 dimensions at once.',
           },
           {
             title: 'Asymmetric distance computation (ADC)',
@@ -989,17 +1181,17 @@ export const offlineStages: Stage[] = [
             where: [
               { sym: String.raw`c^{(j)}_{k_j}`, means: 'the centroid chosen for subvector j of x' },
             ],
-            note: 'The query is never quantised. Precompute a 256×m table of squared distances from each query subvector to every centroid, then scoring any database vector is m table lookups and m additions — no multiplications at all.',
+            note: 'The query is never quantised. Precompute a 256×m table of squared distances from each query subvector to every centroid, then scoring any database vector is m table lookups and m additions, no multiplications at all.',
           },
           {
             title: 'Training cost',
             tex: String.raw`m \text{ separate k-means runs over } \mathbb{R}^{n/m}`,
-            note: 'Needs a representative sample — a common rule is at least 256 × 39 ≈ 10,000 training vectors per subspace for stable centroids.',
+            note: 'Needs a representative sample, a common rule is at least 256 × 39 ≈ 10,000 training vectors per subspace for stable centroids.',
           },
         ],
         tradeoffs: {
           gains: ['32–64× compression', 'Billion-scale corpora fit in RAM', 'ADC scoring is lookup-and-add, no float multiplies'],
-          costs: ['Lossy — real recall loss', 'Requires a training pass and retraining on drift', 'Almost always needs a re-scoring pass'],
+          costs: ['Lossy, real recall loss', 'Requires a training pass and retraining on drift', 'Almost always needs a re-scoring pass'],
         },
       },
       {
@@ -1007,7 +1199,7 @@ export const offlineStages: Stage[] = [
         label: 'Binary',
         tagline: 'One bit per dimension',
         detail:
-          'Keep only the sign of each component. Similarity becomes Hamming distance, computed with XOR and a popcount instruction — extraordinarily fast, and 32× smaller. Far too lossy to be a final answer, but excellent as a first-pass filter that a re-scoring stage then cleans up.',
+          'Keep only the sign of each component. Similarity becomes Hamming distance, computed with XOR and a popcount instruction, extraordinarily fast, and 32× smaller. Far too lossy to be a final answer, but excellent as a first-pass filter that a re-scoring stage then cleans up.',
         math: [
           {
             title: 'Encoding and scoring',
@@ -1032,7 +1224,7 @@ export const offlineStages: Stage[] = [
         summary: 'IVF-PQ is a composition, not an algorithm',
         detail: [
           'Index structure decides which vectors are compared. Compression decides how each one is stored and how its distance is estimated. Any structure combines with any scheme.',
-          'IVF-PQ is simply IVF partitioning with PQ-encoded vectors inside the cells — it is named as a unit only because it is the most common pairing at scale. HNSW-PQ, HNSW-SQ and flat-PQ are all equally valid, and each occupies a different point on the memory/recall curve.',
+          'IVF-PQ is simply IVF partitioning with PQ-encoded vectors inside the cells; it is named as a unit only because it is the most common pairing at scale. HNSW-PQ, HNSW-SQ and flat-PQ are all equally valid, and each occupies a different point on the memory/recall curve.',
         ],
         children: [
           {
@@ -1041,11 +1233,11 @@ export const offlineStages: Stage[] = [
             kind: 'method',
             summary: 'What each combination is actually for',
             detail: [
-              'Flat + none — ground truth and small corpora. Perfect recall, no tuning.',
-              'HNSW + none — the standard high-quality choice up to tens of millions of vectors, when memory allows.',
-              'HNSW + SQ8 — 4× less memory for well under a percent of recall. The most under-used option on this list.',
-              'IVF + PQ — the billion-scale workhorse. Memory dominates every other concern, and the recall loss is bought back with re-scoring.',
-              'Flat + binary → re-score — a fast brute-force shortlist over an enormous corpus, refined against exact vectors.',
+              'Flat + none, ground truth and small corpora. Perfect recall, no tuning.',
+              'HNSW + none, the standard high-quality choice up to tens of millions of vectors, when memory allows.',
+              'HNSW + SQ8, 4× less memory for well under a percent of recall. The most under-used option on this list.',
+              'IVF + PQ, the billion-scale workhorse. Memory dominates every other concern, and the recall loss is bought back with re-scoring.',
+              'Flat + binary → re-score, a fast brute-force shortlist over an enormous corpus, refined against exact vectors.',
             ],
           },
         ],
@@ -1057,7 +1249,7 @@ export const offlineStages: Stage[] = [
         summary: 'Shortlist compressed, refine exact',
         detail: [
           'The standard fix for quantisation loss. Retrieve a larger candidate set using compressed vectors, then recompute exact distances for just those candidates and re-sort.',
-          'Cheap, because you only touch a few hundred exact vectors per query, and it recovers most of the lost recall. It does require keeping the exact vectors somewhere — typically on SSD rather than in RAM, which is the whole point.',
+          'Cheap, because you only touch a few hundred exact vectors per query, and it recovers most of the lost recall. It does require keeping the exact vectors somewhere, typically on SSD rather than in RAM, which is the whole point.',
         ],
         math: [
           {
@@ -1073,18 +1265,18 @@ export const offlineStages: Stage[] = [
       },
       {
         id: 'comp-opq',
-        label: 'OPQ — rotate before splitting',
+        label: 'OPQ, rotate before splitting',
         kind: 'method',
         summary: 'PQ assumes subspaces are independent',
         detail: [
-          'Splitting a vector into contiguous slices assumes each slice carries roughly equal, mutually independent information. Real embeddings violate this badly — variance is concentrated in some dimensions and correlated across others, so some codebooks do almost no work.',
-          'Optimised Product Quantisation learns a rotation matrix R applied before splitting, redistributing variance evenly across subspaces. Same code size, meaningfully better recall — typically a few percent for one extra matrix multiply at query time.',
+          'Splitting a vector into contiguous slices assumes each slice carries roughly equal, mutually independent information. Real embeddings violate this badly, variance is concentrated in some dimensions and correlated across others, so some codebooks do almost no work.',
+          'Optimised Product Quantisation learns a rotation matrix R applied before splitting, redistributing variance evenly across subspaces. Same code size, meaningfully better recall, typically a few percent for one extra matrix multiply at query time.',
         ],
         math: [
           {
             title: 'Rotate, then quantise',
             tex: String.raw`\hat{x} = \text{PQ}(Rx), \qquad R^\top R = I`,
-            note: 'R is orthonormal, so it preserves all distances — the rotation costs nothing in fidelity and only rearranges where information sits.',
+            note: 'R is orthonormal, so it preserves all distances, the rotation costs nothing in fidelity and only rearranges where information sits.',
           },
         ],
       },
@@ -1096,13 +1288,13 @@ export const offlineStages: Stage[] = [
         detail: [
           'Under ~1M vectors, do not compress. 6 GB fits on a laptop and every byte of recall is free.',
           'From 1M to ~50M, SQ8 is nearly always right: 4× smaller, recall loss lost in the noise, no training pass.',
-          'Past ~100M, PQ or IVF-PQ becomes structural — the corpus does not fit otherwise. Budget for a re-scoring pass from the start, and measure recall against a brute-force baseline before and after, because the loss is silent.',
+          'Past ~100M, PQ or IVF-PQ becomes structural, the corpus does not fit otherwise. Budget for a re-scoring pass from the start, and measure recall against a brute-force baseline before and after, because the loss is silent.',
         ],
       },
     ],
     trace: {
       headline: 'Vectors stored',
-      payload: 'float32, uncompressed — 57 MB for 9,304 vectors',
+      payload: 'float32, uncompressed, 57 MB for 9,304 vectors',
       note: 'At this scale compression would cost recall and save nothing that matters.',
     },
   },
@@ -1117,7 +1309,7 @@ export const offlineStages: Stage[] = [
     tagline: 'The handoff point between offline and online',
     detail: [
       'The finished artifact: a structure plus a storage format, holding every chunk vector and its metadata.',
-      'This is the one thing the two halves of the system share. Everything above writes it; everything below reads it. It is also the only stage that is a persistent, stateful object rather than a transformation — which is why versioning it matters.',
+      'This is the one thing the two halves of the system share. Everything above writes it; everything below reads it. It is also the only stage that is a persistent, stateful object rather than a transformation, which is why versioning it matters.',
     ],
     concepts: [
       {
@@ -1127,7 +1319,7 @@ export const offlineStages: Stage[] = [
         summary: 'Build alongside, swap atomically',
         detail: [
           'Any change to chunking, the embedding model, or index parameters invalidates the whole index. Mutating in place leaves it inconsistent for the duration of the rebuild, and queries during that window return partial nonsense.',
-          'Build the new index alongside the old, validate it against a held-out query set, then swap an alias. Keep the previous version until the new one has proven itself in production — rollback should be an alias change, not a rebuild.',
+          'Build the new index alongside the old, validate it against a held-out query set, then swap an alias. Keep the previous version until the new one has proven itself in production, rollback should be an alias change, not a rebuild.',
         ],
       },
       {
@@ -1136,7 +1328,7 @@ export const offlineStages: Stage[] = [
         kind: 'idea',
         summary: 'Hybrid retrieval needs a lexical index too',
         detail: [
-          'Dense retrieval reads the vector index. Sparse retrieval reads an inverted index of term postings — a completely separate structure with its own build process and its own staleness.',
+          'Dense retrieval reads the vector index. Sparse retrieval reads an inverted index of term postings, a completely separate structure with its own build process and its own staleness.',
           'They must be built from the same chunks, or fusion silently compares results over different corpora. Emit both from a single ingestion run and stamp them with the same corpus version.',
         ],
       },
@@ -1146,7 +1338,7 @@ export const offlineStages: Stage[] = [
         kind: 'tradeoff',
         summary: 'Batch rebuilds vs. incremental inserts',
         detail: [
-          'Incremental inserts keep the index current but degrade it over time — IVF centroids drift away from the data, HNSW accumulates tombstones, and both lose recall gradually and invisibly.',
+          'Incremental inserts keep the index current but degrade it over time, IVF centroids drift away from the data, HNSW accumulates tombstones, and both lose recall gradually and invisibly.',
           'Periodic full rebuilds restore quality but cost a full re-embed of the corpus and a window of staleness. The usual arrangement is both: insert continuously, rebuild on a schedule, and monitor ANN recall against a brute-force sample to decide when the schedule is wrong.',
         ],
       },

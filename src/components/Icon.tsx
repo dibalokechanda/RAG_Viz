@@ -40,6 +40,8 @@ export type IconName =
   | 'target'
   | 'rollback'
   | 'pulse'
+  | 'crop'
+  | 'bolt'
   // concept kinds
   | 'bulb'
   | 'fx'
@@ -255,6 +257,13 @@ const P: Record<IconName, React.ReactNode> = {
       <path d="M7 6 3.2 10 7 14" />
     </>
   ),
+  crop: (
+    <>
+      <path d="M6 2v14a2 2 0 0 0 2 2h14" />
+      <path d="M2 6h14a2 2 0 0 1 2 2v14" />
+    </>
+  ),
+  bolt: <path d="M13.5 2 5 13.5h5.5l-1 8.5L19 10.5h-5.5z" />,
   pulse: (
     <>
       <path d="M2.5 12h4l2.5-6.5L14 18.5l2.5-6.5h5" />

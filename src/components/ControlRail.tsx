@@ -5,6 +5,7 @@ const CHUNKING = [
   ['fixed', 'Fixed'],
   ['overlap', 'Overlap'],
   ['recursive', 'Recursive'],
+  ['structure', 'Structure'],
   ['semantic', 'Semantic'],
   ['parent-child', 'Parent–Child'],
 ]
@@ -38,8 +39,10 @@ const TOGGLES: { key: keyof PipelineConfig; label: string; hint: string }[] = [
   { key: 'multiQuery', label: 'Multi-Query', hint: 'One question → several searches' },
   { key: 'decomposition', label: 'Decomposition', hint: 'Split a compound question' },
   { key: 'hyde', label: 'HyDE', hint: 'Embed a hypothetical answer' },
+  { key: 'semanticCache', label: 'Semantic Cache', hint: 'Answer without touching the retriever' },
   { key: 'dedup', label: 'Deduplication', hint: 'Exact → MinHash → cosine → MMR' },
   { key: 'rerank', label: 'Cross-Encoder Rerank', hint: 'Rescore the top candidates' },
+  { key: 'contextWindow', label: 'Context Window Fit', hint: 'Token budget, drop from the bottom' },
   { key: 'retrievalMetrics', label: 'Retrieval Metrics', hint: 'Precision, Recall, MRR, nDCG' },
   { key: 'evaluation', label: 'Generation Evaluation', hint: 'Grounding & faithfulness checks' },
 ]
@@ -74,7 +77,7 @@ export default function ControlRail({ collapsed }: { collapsed: boolean }) {
   return (
     <div className={`rail ${collapsed ? 'collapsed' : ''}`}>
       <div className="rail-group">
-        <h2>Offline — build the index</h2>
+        <h2>Offline · build the index</h2>
 
         <div className="field">
           <div className="field-label">
@@ -104,14 +107,14 @@ export default function ControlRail({ collapsed }: { collapsed: boolean }) {
             onChange={(v) => setVariant('compression', v)}
           />
           <div className="field-note">
-            Orthogonal axes — <b>{indexLabel} + {compLabel}</b>
+            Orthogonal axes · <b>{indexLabel} + {compLabel}</b>
             {config.indexStructure === 'ivf' && config.compression === 'pq' && ' is what people mean by IVF-PQ'}
           </div>
         </div>
       </div>
 
       <div className="rail-group">
-        <h2>Online — answer a query</h2>
+        <h2>Online · answer a query</h2>
 
         <div className="field">
           <div className="field-label">
@@ -195,7 +198,7 @@ export default function ControlRail({ collapsed }: { collapsed: boolean }) {
         )}
         {bothFanouts && (
           <div className="rail-note" style={{ marginTop: 14, borderLeftColor: 'var(--ink)' }}>
-            Multi-query and decomposition are both on. In practice you would pick one — they solve
+            Multi-query and decomposition are both on. In practice you would pick one; they solve
             different problems with the same fan-out shape.
           </div>
         )}

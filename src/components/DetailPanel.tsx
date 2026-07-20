@@ -153,7 +153,7 @@ export default function DetailPanel({ stage, variantId, trace, onOpenMap }: Prop
         {stage.variants && (
           <Section
             index={next()}
-            title={stage.kind === 'store' ? 'Index types' : 'Variants — pick one'}
+            title={stage.kind === 'store' ? 'Index types' : 'Variants · pick one'}
             count={stage.variants.length}
           >
             {stage.variants.map((v) => (
@@ -175,7 +175,7 @@ export default function DetailPanel({ stage, variantId, trace, onOpenMap }: Prop
         {/* Everything specific to the selected variant lives in one section
             rather than fragmenting into four near-empty ones. */}
         {variant && (variant.figures || variant.example || variant.math || variant.tradeoffs) && (
-          <Section index={next()} title={`In depth — ${variant.label}`}>
+          <Section index={next()} title={`In depth · ${variant.label}`}>
             {variant.figures?.map((f, i) => (
               <FigureView figure={f} key={i} />
             ))}

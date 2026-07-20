@@ -115,10 +115,14 @@ export function activeOnlineStages(config: PipelineConfig): Stage[] {
         return config.retrieval === 'hybrid'
       case 'merge':
         return fanoutActive
+      case 'semantic-cache':
+        return config.semanticCache
       case 'dedup':
         return config.dedup
       case 'rerank':
         return config.rerank
+      case 'context-window':
+        return config.contextWindow
       case 'retrieval-metrics':
         return config.retrievalMetrics
       case 'evaluation':

@@ -81,6 +81,14 @@ export interface Distinction {
   body: string
 }
 
+/** A tool commonly used at this stage. */
+export interface StackItem {
+  name: string
+  /** One line: what it is, and when you would reach for it. */
+  what: string
+  url?: string
+}
+
 /**
  * Small inline diagrams. Declared as data so the content files stay readable
  * and every figure inherits the same monochrome styling.
@@ -232,8 +240,12 @@ export interface PipelineConfig {
   multiQuery: boolean
   decomposition: boolean
   hyde: boolean
+  /** Answer/retrieval cache checked before the retriever runs. */
+  semanticCache: boolean
   dedup: boolean
   rerank: boolean
+  /** Token-budget fitting between ranking and prompt assembly. */
+  contextWindow: boolean
   retrievalMetrics: boolean
   evaluation: boolean
   /** Show the control-plane lane: triggers, policy, versioning, CI, fallback. */
@@ -249,8 +261,10 @@ export const defaultConfig: PipelineConfig = {
   multiQuery: false,
   decomposition: false,
   hyde: false,
+  semanticCache: true,
   dedup: true,
   rerank: true,
+  contextWindow: true,
   retrievalMetrics: true,
   evaluation: true,
   platform: true,

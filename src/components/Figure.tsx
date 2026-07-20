@@ -135,7 +135,8 @@ function Curve({ f }: { f: Extract<Figure, { kind: 'curve' }> }) {
   // two were landing on each other whenever the label was wide.
   const padT = 28
   const plotH = 124
-  const h = padT + plotH + 30
+  // Room below the axis for the tick row plus the x-axis caption.
+  const h = padT + plotH + 36
   const plotW = W - padL - padR
 
   const all = f.lines.flatMap((l) => l.points)
@@ -163,14 +164,27 @@ function Curve({ f }: { f: Extract<Figure, { kind: 'curve' }> }) {
           </text>
         </g>
       ))}
-      {f.xTicks?.map((t, i) => (
-        <g key={i}>
-          <line x1={sx(t.at)} y1={padT + plotH} x2={sx(t.at)} y2={padT + plotH + 3} stroke={LINE} />
-          <text x={sx(t.at)} y={padT + plotH + 13} textAnchor="middle" fontSize="10.5" fontFamily={MONO} fill={LABEL}>
-            {t.label}
-          </text>
-        </g>
-      ))}
+      {f.xTicks?.map((t, i) => {
+        // Anchor the end ticks inward so they cannot hang off either edge, and
+        // sit them low enough to clear the y-axis zero label.
+        const tx = sx(t.at)
+        const anchor = tx > W - padR - 14 ? 'end' : tx < padL + 14 ? 'start' : 'middle'
+        return (
+          <g key={i}>
+            <line x1={tx} y1={padT + plotH} x2={tx} y2={padT + plotH + 3} stroke={LINE} />
+            <text
+              x={anchor === 'end' ? W : anchor === 'start' ? padL - 4 : tx}
+              y={padT + plotH + 17}
+              textAnchor={anchor}
+              fontSize="10.5"
+              fontFamily={MONO}
+              fill={LABEL}
+            >
+              {t.label}
+            </text>
+          </g>
+        )
+      })}
 
       {f.lines.map((l, i) => (
         <polyline
@@ -184,30 +198,58 @@ function Curve({ f }: { f: Extract<Figure, { kind: 'curve' }> }) {
       ))}
 
       {(() => {
-        // Nudge labels apart when two marks sit close together, otherwise
-        // adjacent annotations overprint each other.
+        /*
+         * Mark labels have to dodge two things: the plotted lines, and each
+         * other. Rather than special-casing peaks and troughs, try a handful of
+         * placements and take the first that is clear of both.
+         */
         const placed: { x: number; y: number; w: number }[] = []
+
+        // Densified points of every line, for hit-testing label boxes.
+        const linePts: [number, number][] = []
+        f.lines.forEach((l) => {
+          for (let i = 0; i < l.points.length - 1; i++) {
+            const [ax, ay] = l.points[i]
+            const [bx, by] = l.points[i + 1]
+            for (let k = 0; k <= 10; k++) {
+              const t = k / 10
+              linePts.push([sx(ax + (bx - ax) * t), sy(ay + (by - ay) * t)])
+            }
+          }
+        })
+
+        const hitsLine = (x: number, y: number, w: number) =>
+          linePts.some((p) => p[0] >= x - 2 && p[0] <= x + w + 2 && p[1] >= y - 10 && p[1] <= y + 3)
+
+        const hitsLabel = (x: number, y: number, w: number) =>
+          placed.some((p) => Math.abs(p.y - y) < 13 && x < p.x + p.w + 4 && p.x < x + w + 4)
+
         return f.marks?.map((m, i) => {
         const px = sx(m.x)
-        const rawY = Math.max(padT + 9, sy(m.y) - 6)
+        const py0 = sy(m.y)
         // Flip the label to the left near the right edge so it cannot run off
         // the figure.
         const flip = px > W - padR - 70
         const w = m.label.length * 6.3
         const x0 = flip ? px - 6 - w : px + 6
-        let py = rawY
-        for (let guard = 0; guard < 6; guard++) {
-          const clash = placed.some(
-            (p) => Math.abs(p.y - py) < 13 && x0 < p.x + p.w + 4 && p.x < x0 + w + 4,
-          )
-          if (!clash) break
-          py += 14
+
+        // Above, below, then progressively further out on each side.
+        const candidates = [py0 - 9, py0 + 18, py0 - 23, py0 + 32, py0 - 37, py0 + 46]
+        let py = candidates[0]
+        for (const c of candidates) {
+          const clamped = Math.min(padT + plotH - 3, Math.max(padT + 9, c))
+          if (!hitsLine(x0, clamped, w) && !hitsLabel(x0, clamped, w)) {
+            py = clamped
+            break
+          }
+          py = clamped
         }
+
         placed.push({ x: x0, y: py, w })
         return (
           <g key={i}>
             {/* The dot stays on the data point; only the label is nudged. */}
-            <circle cx={px} cy={sy(m.y)} r="2.8" fill={INK} />
+            <circle cx={px} cy={py0} r="2.8" fill={INK} />
             <text
               x={flip ? px - 6 : px + 6}
               y={py}
@@ -413,35 +455,36 @@ function Blocks({ f }: { f: Extract<Figure, { kind: 'blocks' }> }) {
                 </g>
               )
             })}
-            {r.arrow !== undefined && (
-              <g>
-                <line
-                  x1={W / 2}
-                  y1={rowY + rowH + 3}
-                  x2={W / 2}
-                  y2={rowY + rowH + arrowH - 3}
-                  stroke={MUTE}
-                  strokeWidth="1"
-                />
-                <path
-                  d={`M ${W / 2 - 3} ${rowY + rowH + arrowH - 6} L ${W / 2} ${rowY + rowH + arrowH - 2} L ${W / 2 + 3} ${rowY + rowH + arrowH - 6}`}
-                  fill="none"
-                  stroke={MUTE}
-                  strokeWidth="1"
-                />
-                {r.arrow && (
-                  <text
-                    x={W / 2 + 8}
-                    y={rowY + rowH + arrowH - 4}
-                    fontSize="10.5"
-                    fontFamily={MONO}
-                    fill={LABEL}
-                  >
-                    {r.arrow}
-                  </text>
-                )}
-              </g>
-            )}
+            {r.arrow !== undefined &&
+              (() => {
+                // The arrow sits on the left so its caption gets the full width;
+                // centring it left long captions running off the right edge.
+                const ax = 22
+                const tipY = rowY + rowH + arrowH - 2
+                const textX = ax + 14
+                return (
+                  <g>
+                    <line x1={ax} y1={rowY + rowH + 3} x2={ax} y2={tipY - 1} stroke={MUTE} strokeWidth="1" />
+                    <path
+                      d={`M ${ax - 3} ${tipY - 4} L ${ax} ${tipY} L ${ax + 3} ${tipY - 4}`}
+                      fill="none"
+                      stroke={MUTE}
+                      strokeWidth="1"
+                    />
+                    {r.arrow && (
+                      <text
+                        x={textX}
+                        y={tipY - 1}
+                        fontSize={Math.max(8, Math.min(10.5, (W - textX) / (r.arrow.length * 0.62)))}
+                        fontFamily={MONO}
+                        fill={LABEL}
+                      >
+                        {r.arrow}
+                      </text>
+                    )}
+                  </g>
+                )
+              })()}
           </g>
         )
         y += rowH + gap + (r.arrow !== undefined ? arrowH : 0)
