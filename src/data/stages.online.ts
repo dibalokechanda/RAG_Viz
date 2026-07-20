@@ -1732,7 +1732,7 @@ retriever = ContextualCompressionRetriever(
         kind: 'tradeoff',
         summary: 'Latency-critical or already-precise retrieval',
         detail: [
-          'If retrieval precision@5 is already high, a small, clean, well-separated corpus, reranking adds latency for little movement.',
+          'If retrieval precision@K is already high, a small, clean, well-separated corpus, reranking adds latency for little movement.',
           'It is also skippable when the LLM context is large enough to take the full top-50 directly. That trades reranker latency for generation cost and the risk of the model losing the relevant chunk in the middle of a long context, which is a real and measurable effect.',
         ],
       },
@@ -1857,7 +1857,7 @@ scores = evaluate(dataset, metrics=[context_recall, context_precision])`,
         summary: 'What fraction of everything relevant you found',
         detail: [
           'The single most diagnostic metric in RAG. A chunk missed at retrieval cannot be recovered by reranking, prompting, or a better model, the information simply is not in the pipeline.',
-          'Measure it at the retrieval stage with generous K. If recall@50 is low, nothing downstream can save you and the fix belongs in chunking, embedding, or query processing.',
+          'Measure it at the retrieval stage with generous K. If recall@K is low, nothing downstream can save you and the fix belongs in chunking, embedding, or query processing.',
         ],
         math: [
           {
@@ -1977,8 +1977,8 @@ scores = evaluate(dataset, metrics=[context_recall, context_precision])`,
         summary: 'Match the metric to the question shape',
         detail: [
           'Recall@K at retrieval, always. It is the ceiling on everything downstream and the only metric that localises a fatal failure.',
-          'nDCG@10 as the headline quality number, if you can afford graded judgements. It captures both ordering and degree of relevance, and it is what reranker improvements actually move.',
-          'MRR when questions have one right answer. Precision@5 when you want to know what the prompt is being padded with. MAP when relevance is binary and several documents matter.',
+          'nDCG@K as the headline quality number, if you can afford graded judgements. It captures both ordering and degree of relevance, and it is what reranker improvements actually move.',
+          'MRR when questions have one right answer. Precision@K when you want to know what the prompt is being padded with. MAP when relevance is binary and several documents matter.',
         ],
       },
       {

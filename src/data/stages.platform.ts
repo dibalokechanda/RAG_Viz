@@ -469,7 +469,7 @@ results = evaluate(
       },
       {
         title: 'What to gate on',
-        tex: String.raw`\text{recall@50} \;\wedge\; \text{nDCG@10} \;\wedge\; \text{faithfulness} \;\wedge\; p95\ \text{latency}`,
+        tex: String.raw`\text{recall@K} \;\wedge\; \text{nDCG@K} \;\wedge\; \text{faithfulness} \;\wedge\; p95\ \text{latency}`,
         note: 'Gate on the retrieval ceiling, the ranking quality, the generation grounding and the cost. Any one alone is gameable: a change that improves nDCG by retrieving fewer, safer chunks will hurt recall, and a change that improves faithfulness by abstaining more will not show up in retrieval metrics at all.',
       },
     ],
