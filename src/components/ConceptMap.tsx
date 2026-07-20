@@ -13,6 +13,7 @@ import {
 import type { Concept, Stage, StackItem } from '../data/types'
 import MathBlockView from './Math'
 import FigureView from './Figure'
+import CodeBlockView from './Code'
 import Icon, { type IconName } from './Icon'
 import ReactMarkdown from 'react-markdown'
 
@@ -222,6 +223,10 @@ function ConceptDetail({ concept }: { concept: Concept | null }) {
 
       {concept.math?.map((m, i) => (
         <MathBlockView block={m} key={i} />
+      ))}
+
+      {concept.code?.map((c, i) => (
+        <CodeBlockView block={c} key={i} />
       ))}
 
       {concept.example && (

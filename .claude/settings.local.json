@@ -20,7 +20,13 @@
       "Bash(node -e ' *)",
       "Bash(python -)",
       "Bash(node fix-splices.mjs)",
-      "Bash(grep -v \"^\\\\s*//\")"
+      "Bash(grep -v \"^\\\\s*//\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\({dep:p.dependencies,dev:p.devDependencies},null,1\\)\\)\")",
+      "Bash(awk \"/id: 'decomposition',/{f=1} f&&/tagline:/{print; exit}\" src/data/stages.online.ts)",
+      "Bash(awk \"/id: 'chunking',/{f=1} f&&/label: '\\(Recursive|Document Structure|Semantic|Parent–Child\\)'/{print} f&&/id: 'embedding'/{exit}\" src/data/stages.offline.ts)",
+      "Bash(awk \"/id: 'retrieval-metrics',/{f=1} f&&/tagline:/{print; exit}\" src/data/stages.online.ts)",
+      "Bash(grep -rn \"\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'\" src/data/stages.*.ts)",
+      "Bash(perl -i -pe \"s/model\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'s own tokenizer/model\\\\\\\\\\\\\\\\'s own tokenizer/; s/provider\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'s constrained/provider\\\\\\\\\\\\\\\\'s constrained/; s/LangChain\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'s evaluators/LangChain\\\\\\\\\\\\\\\\'s evaluators/\" src/data/stages.online.ts)"
     ]
   }
 }

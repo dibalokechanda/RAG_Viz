@@ -2,6 +2,7 @@ import type { Example, Stage, StackItem, Tradeoffs } from '../data/types'
 import { usePipeline } from '../PipelineContext'
 import MathBlockView from './Math'
 import FigureView from './Figure'
+import CodeBlockView from './Code'
 import Section from './Section'
 import Icon from './Icon'
 import ReactMarkdown from 'react-markdown'
@@ -148,6 +149,14 @@ export default function DetailPanel({ stage, variantId, onOpenMap }: Props) {
           </Section>
         )}
 
+        {stage.code && stage.code.length > 0 && (
+          <Section index={next()} title="Code" count={stage.code.length} defaultOpen>
+            {stage.code.map((c, i) => (
+              <CodeBlockView block={c} key={i} />
+            ))}
+          </Section>
+        )}
+
         {stage.example && (
           <Section index={next()} title="Example">
             <ExampleBlock example={stage.example} />
@@ -198,6 +207,15 @@ export default function DetailPanel({ stage, variantId, onOpenMap }: Props) {
                 <div className="sub-label">The maths</div>
                 {variant.math.map((m, i) => (
                   <MathBlockView block={m} key={i} />
+                ))}
+              </>
+            )}
+
+            {variant.code && (
+              <>
+                <div className="sub-label">Code</div>
+                {variant.code.map((c, i) => (
+                  <CodeBlockView block={c} key={i} />
                 ))}
               </>
             )}

@@ -119,6 +119,22 @@ export const platformStages: Stage[] = [
     kind: 'sequential',
     ordinal: 'P2',
     tagline: 'Who may see which chunk, enforced, not assumed',
+    code: [
+      {
+        title: 'Pinecone / LangChain',
+        language: 'python',
+        code: `retriever = vectorstore.as_retriever(
+    search_kwargs={
+        "k": 10,
+        "filter": {
+            "tenant_id": {"$eq": user.tenant_id},
+            "classification": {"$in": ["public", "internal"]}
+        }
+    }
+)`,
+        note: 'Push the ACL down into the vector database so it filters the search space before returning results.',
+      },
+    ],
     governs: ['metadata', 'retrieval', 'postprocess'],
     detail: [
       '**Retrieval respects the index, not your authorisation model.** Nothing about a vector search knows that this user may not read that document. Unless permissions are captured at ingest and enforced at query time, the system will happily surface restricted content.',
@@ -403,6 +419,22 @@ export const platformStages: Stage[] = [
     kind: 'sequential',
     ordinal: 'P5',
     tagline: 'Every artifact change is evaluated before it ships',
+    code: [
+      {
+        title: 'LangSmith',
+        language: 'python',
+        code: `from langsmith import evaluate
+
+# Run the candidate build against the golden-set dataset in CI.
+results = evaluate(
+    lambda x: rag_chain.invoke(x["question"]),
+    data="golden-set-v3",
+    evaluators=[faithfulness_eval, context_recall_eval],
+)
+# Gate promotion: block if score < baseline - tolerance.`,
+        note: 'Promptfoo and RAGAS test suites fill the same slot for teams not on LangSmith.',
+      },
+    ],
     governs: ['goldenset', 'versioning', 'retrieval-metrics'],
     detail: [
       'Any change to a pinned artifact, chunker, embedder, index, prompt, triggers a run against the golden set. Retrieval metrics and generation metrics are computed, compared against the current production baseline, and the change is promoted or blocked on the result.',
@@ -544,6 +576,17 @@ export const platformStages: Stage[] = [
     kind: 'sequential',
     ordinal: 'P6',
     tagline: 'What production is doing, right now',
+    code: [
+      {
+        title: 'LangSmith',
+        language: 'bash',
+        code: `# One env switch traces every stage: retrieval, rerank, generation, tokens.
+export LANGCHAIN_TRACING_V2=true
+export LANGCHAIN_API_KEY=ls__...
+export LANGCHAIN_PROJECT=rag-prod`,
+        note: 'LangSmith, Langfuse, Arize Phoenix and Helicone all capture per-stage spans and let you sample live answers for offline judging.',
+      },
+    ],
     governs: ['retrieval', 'generation', 'fallback'],
     detail: [
       'The evaluation gate answers "is this build worse than the last one?" against a fixed set. Observability answers a different question, "is something happening right now?", against unbounded, unlabelled live traffic. Neither substitutes for the other: the golden set cannot tell you that user behaviour shifted, and production metrics cannot tell you whether a candidate build is safe to promote.',

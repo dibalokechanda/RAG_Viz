@@ -42,6 +42,7 @@ export interface Variant {
   example?: Example
   math?: MathBlock[]
   figures?: Figure[]
+  code?: CodeBlock[]
   tradeoffs?: Tradeoffs
 }
 
@@ -87,6 +88,17 @@ export interface StackItem {
   /** One line: what it is, and when you would reach for it. */
   what: string
   url?: string
+}
+
+/** A focused code snippet, usually LangChain / LangGraph. */
+export interface CodeBlock {
+  /** Framework label shown in the header, e.g. "LangChain". */
+  title?: string
+  /** Drives highlighting and the language tag. */
+  language: 'python' | 'bash'
+  code: string
+  /** One line under the block explaining what it shows. */
+  note?: string
 }
 
 /**
@@ -175,6 +187,7 @@ export interface Concept {
   detail?: string[]
   math?: MathBlock[]
   figures?: Figure[]
+  code?: CodeBlock[]
   example?: Example
   tradeoffs?: Tradeoffs
   children?: Concept[]
@@ -228,6 +241,8 @@ export interface Stage {
   concepts?: Concept[]
   /** Tools and libraries commonly used at this stage. */
   stack?: StackItem[]
+  /** Code snippets, usually LangChain / LangGraph. */
+  code?: CodeBlock[]
   /** Frame shown when the animated query passes through this stage. */
   trace?: TraceFrame
 }

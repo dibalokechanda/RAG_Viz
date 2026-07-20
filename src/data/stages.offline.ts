@@ -35,6 +35,22 @@ export const offlineStages: Stage[] = [
     kind: 'sequential',
     ordinal: '2a',
     tagline: 'Bytes → text, format by format',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain_community.document_loaders import (
+    PyPDFLoader, UnstructuredMarkdownLoader, UnstructuredPDFLoader)
+
+# One loader per format. The split that matters is text-layer vs. scanned.
+docs = PyPDFLoader("spec.pdf").load()               # digital: reads text layer
+md   = UnstructuredMarkdownLoader("guide.md").load() # keeps heading structure
+
+# A scanned PDF has no text layer, so route it through OCR.
+scan = UnstructuredPDFLoader("scan.pdf", strategy="ocr_only").load()`,
+        note: 'UnstructuredPDFLoader delegates OCR to Tesseract; Docling and AWS Textract are common higher-accuracy alternatives.',
+      },
+    ],
     detail: [
       'You will likely need **one loader per source format**, each with its own failure modes. The most important split is not by file extension, but by whether the text is already there:',
       '- **Digital PDFs**: Carry a text layer directly, allowing the parser to read it.',
@@ -217,6 +233,21 @@ export const offlineStages: Stage[] = [
     kind: 'sequential',
     ordinal: '2c',
     tagline: 'Deterministic preprocessing, no LLM',
+    code: [
+      {
+        title: 'Python (Boilerplate Stripping)',
+        language: 'python',
+        code: `import re
+
+def clean_text(text: str) -> str:
+    # Remove multiple newlines
+    text = re.sub(r'\\n{3,}', '\\n\\n', text)
+    # Remove page numbers like "- 42 -"
+    text = re.sub(r'(?m)^\\s*-\\s*\\d+\\s*-\\s*$', '', text)
+    return text.strip()`,
+        note: 'Keep it deterministic. Avoid LLM-based cleaners that might silently paraphrase.',
+      },
+    ],
     detail: [
       'Strip the artifacts of the source format so they do not become retrievable content: **running headers**, **footers**, **page numbers**, duplicated whitespace, encoding mismatches, and OCR garbage.',
       '**This stage is deliberately dumb.** It is rules and regexes, not a model. Determinism matters because you want to be able to re-run ingestion and get byte-identical output, otherwise you cannot tell whether a retrieval regression came from your data or your code.',
@@ -413,6 +444,19 @@ export const offlineStages: Stage[] = [
         id: 'recursive',
         label: 'Recursive',
         tagline: 'Split hierarchically, only as far as needed',
+        code: [
+          {
+            title: 'LangChain',
+            language: 'python',
+            code: `from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=500, chunk_overlap=50,
+    separators=["\\n\\n", "\\n", ". ", " ", ""],  # tried in order, coarse first
+)
+chunks = splitter.split_documents(docs)`,
+          },
+        ],
         detail: [
           'Split on the largest structural unit first, and only descend if the piece is still too big: **heading → paragraph → sentence → token window**.',
           'A short section stays whole; a long one gets broken along seams the author already put there.'
@@ -427,6 +471,20 @@ export const offlineStages: Stage[] = [
         id: 'structure',
         label: 'Document Structure',
         tagline: 'Chunk along the document tree, not the text',
+        code: [
+          {
+            title: 'LangChain',
+            language: 'python',
+            code: `from langchain_text_splitters import MarkdownHeaderTextSplitter
+
+splitter = MarkdownHeaderTextSplitter(headers_to_split_on=[
+    ("#", "h1"), ("##", "h2"), ("###", "h3")])
+# Each chunk keeps its heading path in metadata, e.g. {"h1": "Indexing",
+# "h2": "IVF"}. Prepend it before embedding so the chunk is self-describing.
+chunks = splitter.split_text(markdown)`,
+            note: 'HTMLHeaderTextSplitter does the same over the DOM. Layer a recursive splitter behind it to cut any oversized section.',
+          },
+        ],
         detail: [
           'Parse the document into its actual tree and cut on the boundaries the author already declared: **Markdown headings, HTML DOM, DOCX heading styles, notebook cells**.',
           'Each chunk then corresponds to a real section rather than to a position in a character stream, and it arrives carrying the heading path that led to it.',
@@ -500,6 +558,20 @@ export const offlineStages: Stage[] = [
         id: 'semantic',
         label: 'Semantic',
         tagline: 'Split where the topic changes',
+        code: [
+          {
+            title: 'LangChain',
+            language: 'python',
+            code: `from langchain_experimental.text_splitter import SemanticChunker
+from langchain_openai import OpenAIEmbeddings
+
+# Embeds each sentence, cuts where neighbour similarity drops below a
+# percentile of this document's own distribution.
+splitter = SemanticChunker(
+    OpenAIEmbeddings(), breakpoint_threshold_type="percentile")
+chunks = splitter.split_documents(docs)`,
+          },
+        ],
         detail:
           'Boundaries come from meaning, not from counting.\n\n- Split into sentences or paragraphs.\n- Embed each one and walk the sequence comparing neighbours.\n- **Cut wherever similarity drops sharply**; a sharp drop is the signal that the topic moved.',
         figures: [
@@ -588,6 +660,20 @@ export const offlineStages: Stage[] = [
         id: 'parent-child',
         label: 'Parent–Child',
         tagline: 'Search small, return large',
+        code: [
+          {
+            title: 'LangChain',
+            language: 'python',
+            code: `from langchain.retrievers import ParentDocumentRetriever
+
+retriever = ParentDocumentRetriever(
+    vectorstore=store,          # indexes the small child chunks
+    docstore=InMemoryStore(),   # holds the large parent sections
+    child_splitter=RecursiveCharacterTextSplitter(chunk_size=200),
+    parent_splitter=RecursiveCharacterTextSplitter(chunk_size=2000),
+)  # matches on children, returns their parents to the LLM`,
+          },
+        ],
         detail: [
           'Keep two levels of the same document:',
           '- **Index the child:** Small child paragraphs embed precisely.',
@@ -689,6 +775,20 @@ export const offlineStages: Stage[] = [
     kind: 'sequential',
     ordinal: '4',
     tagline: 'Every chunk becomes a dense vector',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain_openai import OpenAIEmbeddings
+
+embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+
+# The SAME model must embed the corpus and the queries; mixing two
+# models shares no vector space and silently returns nonsense.
+vectors = embeddings.embed_documents([c.page_content for c in chunks])`,
+        note: 'Swap in HuggingFaceEmbeddings for open models. Check the MTEB leaderboard before committing to one.',
+      },
+    ],
     detail: [
       'Each chunk goes through the embedding model and comes out as a fixed-length vector. Semantic similarity becomes geometric proximity, which is what makes approximate search possible at all.',
       '**Re-embedding has two very different costs, and confusing them is expensive:**',
@@ -830,6 +930,20 @@ export const offlineStages: Stage[] = [
             label: 'Matryoshka Representation Learning',
             kind: 'method',
             summary: 'Every prefix of the vector is itself a valid embedding',
+            code: [
+              {
+                title: 'LangChain',
+                language: 'python',
+                code: `from langchain_openai import OpenAIEmbeddings
+
+# text-embedding-3-* are Matryoshka-trained: ask for a shorter vector
+# and every prefix is still a valid embedding.
+short = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=256)
+full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
+# Shortlist the corpus with 'short', re-score the shortlist with 'full'.`,
+                note: 'Renormalise after truncating if you slice vectors yourself; the API-side dimensions argument already returns normalised vectors.',
+              },
+            ],
             detail: [
               'In an ordinary embedding the information is spread across all dimensions with no particular ordering, so the first 64 numbers mean nothing on their own. Cutting the vector short does not give you a smaller embedding; it gives you a broken one.',
               'Matryoshka Representation Learning changes the training objective so that nested prefixes are each trained to work as standalone embeddings. The loss is applied at several dimensionalities at once, typically 64, 128, 256, 512, 1024 and the full width, and summed. The model is therefore pushed to put the coarsest, most discriminative structure in the earliest dimensions and to use later dimensions for progressively finer distinctions. The name is the point: each prefix is a smaller complete doll nested inside the next.',
@@ -1376,6 +1490,20 @@ export const offlineStages: Stage[] = [
     kind: 'store',
     ordinal: '5',
     tagline: 'The handoff point between offline and online',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain_chroma import Chroma
+
+# Built once, offline. This is the artifact the online path reads.
+store = Chroma.from_documents(chunks, embeddings, persist_directory="./idx")
+
+# FAISS, Milvus, Pinecone, LanceDB and pgvector expose the same interface.
+retriever = store.as_retriever(search_kwargs={"k": 50})`,
+        note: 'The vector store sits behind one interface, so the choice is swappable: Chroma, FAISS, Milvus, Pinecone, LanceDB, pgvector, Qdrant, Weaviate.',
+      },
+    ],
     detail: [
       'The finished artifact: a structure plus a storage format, holding every chunk vector and its metadata.',
       'This is the one thing the two halves of the system share. Everything above writes it; everything below reads it. It is also the only stage that is a persistent, stateful object rather than a transformation, which is why versioning it matters.',

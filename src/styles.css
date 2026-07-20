@@ -1898,6 +1898,99 @@ body {
 }
 
 
+/* ─────────────────────────── Code blocks ─────────────────────────── */
+
+.code-block {
+  margin: 0 0 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md, 8px);
+  overflow: hidden;
+  background: #fbfaf8;
+}
+
+.code-block:last-child {
+  margin-bottom: 0;
+}
+
+.code-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+}
+
+.code-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.code-lang {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.code-copy {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm, 5px);
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: all 130ms;
+}
+
+.code-copy:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.code-body {
+  margin: 0;
+  padding: 13px 14px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text);
+  tab-size: 4;
+}
+
+.code-body code {
+  font-family: inherit;
+  white-space: pre;
+}
+
+/* Token colours: warm, low-saturation, readable on the light panel. */
+.tok-comment { color: #9a948a; font-style: italic; }
+.tok-string  { color: #9c6b2e; }
+.tok-keyword { color: #1f7a4d; font-weight: 600; }
+.tok-decorator { color: #8a6d3b; }
+.tok-number  { color: #2f6f6f; }
+.tok-call    { color: #2b5c8a; }
+
+.code-note {
+  margin: 0;
+  padding: 9px 14px 12px;
+  font-size: var(--fs-xs, 12.5px);
+  line-height: 1.6;
+  color: var(--text-faint);
+  border-top: 1px solid var(--border);
+}
+
 /* Markdown Styles */
 .markdown-content p {
   margin-bottom: 0.75rem;
