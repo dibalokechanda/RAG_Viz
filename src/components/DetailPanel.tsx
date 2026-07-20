@@ -1,4 +1,4 @@
-import type { Example, Stage, StackItem, Tradeoffs, TraceFrame } from '../data/types'
+import type { Example, Stage, StackItem, Tradeoffs } from '../data/types'
 import { usePipeline } from '../PipelineContext'
 import MathBlockView from './Math'
 import FigureView from './Figure'
@@ -46,30 +46,15 @@ function TradeoffBlock({ tradeoffs }: { tradeoffs: Tradeoffs }) {
   )
 }
 
-function TraceBlock({ trace, step, total }: { trace: TraceFrame; step: number; total: number }) {
-  return (
-    <div className="trace-card">
-      <div className="trace-head">
-        <b>{trace.headline}</b>
-        <span className="trace-step">
-          {step} / {total}
-        </span>
-      </div>
-      <div className="trace-payload">{trace.payload}</div>
-      {trace.note && <div className="trace-note">{trace.note}</div>}
-    </div>
-  )
-}
+
 
 interface Props {
   stage: Stage | null
   variantId?: string
-  /** Live trace frame, when the walkthrough is sitting on this stage. */
-  trace?: { frame: TraceFrame; step: number; total: number } | null
   onOpenMap: () => void
 }
 
-export default function DetailPanel({ stage, variantId, trace, onOpenMap }: Props) {
+export default function DetailPanel({ stage, variantId, onOpenMap }: Props) {
   const { setVariant, select } = usePipeline()
 
   if (!stage) {
@@ -81,9 +66,6 @@ export default function DetailPanel({ stage, variantId, trace, onOpenMap }: Prop
           </div>
           <p>
             Select any stage to read what it does, why it exists, and what it costs.
-            <br />
-            <br />
-            Or press <b>Play</b> to watch a single query travel the whole pipeline.
           </p>
         </div>
       </aside>
@@ -122,8 +104,6 @@ export default function DetailPanel({ stage, variantId, trace, onOpenMap }: Prop
       </div>
 
       <div className="detail-body">
-        {trace && <TraceBlock trace={trace.frame} step={trace.step} total={trace.total} />}
-
         <Section index={next()} title="Overview" defaultOpen>
           {stage.detail && stage.detail.length > 0 && (
             <div className="markdown-content">

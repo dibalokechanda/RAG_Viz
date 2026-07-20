@@ -24,13 +24,11 @@ const KIND_LABEL: Record<string, string> = {
 
 export default function StageNode({ data }: NodeProps<Node<StageNodeData>>) {
   const { stage, variantId, active, done, selected, multiplier } = data
-  const { setVariant, playing, focusStage } = usePipeline()
+  const { setVariant, focusStage } = usePipeline()
 
   const variant = stage.variants?.find((v) => v.id === variantId)
   const tagline = variant ? variant.tagline : stage.tagline
 
-  // While the walkthrough runs, everything the query hasn't reached yet recedes.
-  const dimmed = playing && !active && !done
 
   const classes = [
     'node',
@@ -39,7 +37,6 @@ export default function StageNode({ data }: NodeProps<Node<StageNodeData>>) {
     stage.kind,
     active && 'is-active',
     selected && 'is-selected',
-    dimmed && 'is-dimmed',
   ]
     .filter(Boolean)
     .join(' ')

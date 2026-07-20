@@ -10,7 +10,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import { buildGraph, traceOrder, variantFor, STAGE_CONFIG_KEY, type FlowNode } from './data/graph'
+import { buildGraph, variantFor, STAGE_CONFIG_KEY, type FlowNode } from './data/graph'
 import ConceptMap from './components/ConceptMap'
 import { stageById } from './data/stages'
 import { defaultConfig, type PipelineConfig } from './data/types'
@@ -20,34 +20,20 @@ import LaneLabel from './components/LaneLabel'
 import { JoinEdge, PipelineEdge } from './components/edges'
 import DetailPanel from './components/DetailPanel'
 import ControlRail from './components/ControlRail'
-import Player from './components/Player'
 
 const nodeTypes = { stage: StageNode, lane: LaneLabel }
 const edgeTypes = { pipeline: PipelineEdge, join: JoinEdge }
-const SPEEDS = [1, 1.5, 2, 0.5]
 
 function Canvas() {
   const [config, setConfig] = useState<PipelineConfig>(defaultConfig)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [step, setStep] = useState(-1)
-  const [playing, setPlaying] = useState(false)
-  const [speedIdx, setSpeedIdx] = useState(0)
   const [railCollapsed, setRailCollapsed] = useState(false)
   const [mapOpen, setMapOpen] = useState(false)
   const { setCenter, fitView } = useReactFlow()
-  const speed = SPEEDS[speedIdx]
-
-  const trace = useMemo(() => traceOrder(config), [config])
-  const activeStage = step >= 0 && step < trace.length ? trace[step] : null
-
-  const visitedIds = useMemo(
-    () => new Set(trace.slice(0, Math.max(0, step + 1)).map((s) => s.id)),
-    [trace, step],
-  )
 
   const { nodes, edges } = useMemo(
-    () => buildGraph({ config, activeStageId: activeStage?.id ?? null, visitedIds, selectedId }),
-    [config, activeStage, visitedIds, selectedId],
+    () => buildGraph({ config, activeStageId: null, visitedIds: new Set(), selectedId }),
+    [config, selectedId],
   )
 
   // Keep a ref to node positions so the camera can follow the walkthrough
@@ -80,27 +66,7 @@ function Canvas() {
     [setCenter],
   )
 
-  // Advance the walkthrough.
-  useEffect(() => {
-    if (!playing) return
-    if (step >= trace.length - 1) {
-      setPlaying(false)
-      return
-    }
-    const t = setTimeout(() => setStep((s) => s + 1), 2600 / speed)
-    return () => clearTimeout(t)
-  }, [playing, step, trace.length, speed])
 
-  // Follow the active stage with the camera, and mirror it into the panel.
-  useEffect(() => {
-    if (!activeStage) return
-    setSelectedId(activeStage.id)
-    const node = posRef.current.get(activeStage.id)
-    if (node) {
-      // Offsets are half the card, so the camera lands on its centre.
-      setCenter(node.position.x + 195, node.position.y + 62, { zoom: 0.95, duration: 620 })
-    }
-  }, [activeStage, setCenter])
 
   // Esc closes the concept map.
   useEffect(() => {
@@ -116,10 +82,7 @@ function Canvas() {
     return () => clearTimeout(t)
   }, [railCollapsed, fitView])
 
-  // If a config change removes the stage the walkthrough was sitting on, clamp.
-  useEffect(() => {
-    if (step > trace.length - 1) setStep(trace.length - 1)
-  }, [trace.length, step])
+
 
   const onNodeClick: NodeMouseHandler = useCallback((_e, node) => {
     if (node.type === 'lane') return
@@ -135,20 +98,9 @@ function Canvas() {
     [selectedStage, config],
   )
 
-  const traceForPanel =
-    activeStage && selectedId === activeStage.id && activeStage.trace
-      ? { frame: activeStage.trace, step: step + 1, total: trace.length }
-      : null
-
-  const reset = useCallback(() => {
-    setPlaying(false)
-    setStep(-1)
-    setSelectedId(null)
-  }, [])
-
   const ctx = useMemo(
-    () => ({ config, setVariant, toggle, select: setSelectedId, focusStage, playing }),
-    [config, setVariant, toggle, focusStage, playing],
+    () => ({ config, setVariant, toggle, select: setSelectedId, focusStage, playing: false }),
+    [config, setVariant, toggle, focusStage],
   )
 
   return (
@@ -164,7 +116,7 @@ function Canvas() {
             ☰
           </button>
           <h1>RAG Pipeline</h1>
-          <span className="sub">Interactive map. Click any stage, or play a query through it</span>
+          <span className="sub">Interactive map. Click any stage to view details</span>
           <div className="topbar-spacer" />
           <div className="lane-key">
             <span>
@@ -205,30 +157,12 @@ function Canvas() {
               <Controls showInteractive={false} position="bottom-right" />
             </ReactFlow>
 
-            <Player
-              playing={playing}
-              step={step}
-              total={trace.length}
-              label={activeStage?.trace?.headline ?? ''}
-              speed={speed}
-              onToggle={() => {
-                if (step >= trace.length - 1) setStep(-1)
-                setPlaying((p) => !p)
-                if (step < 0) setStep(0)
-              }}
-              onStep={(d) => {
-                setPlaying(false)
-                setStep((s) => Math.min(trace.length - 1, Math.max(0, s + d)))
-              }}
-              onReset={reset}
-              onSpeed={() => setSpeedIdx((i) => (i + 1) % SPEEDS.length)}
-            />
+
           </div>
 
           <DetailPanel
             stage={selectedStage}
             variantId={selectedVariant}
-            trace={traceForPanel}
             onOpenMap={() => setMapOpen(true)}
           />
         </div>
