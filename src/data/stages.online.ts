@@ -1762,9 +1762,14 @@ scores = evaluate(dataset, metrics=[context_recall, context_precision])`,
       },
     ],
     detail: [
-      'Everything so far produced a ranked list. These metrics say whether it was any good, and they are computed against relevance judgements, not against the model’s output.',
-      'This separation is the important part. Generation-side evaluation tells you whether the answer was faithful to the context it was given. It cannot tell you whether the right context was ever retrieved. When answers are wrong, these metrics are what distinguish "the model hallucinated" from "the evidence was never there", two failures with completely different fixes.',
-      'They divide into two families. Set metrics, precision and recall, ignore order and ask what fraction of the retrieved set was relevant. Rank metrics, MRR and nDCG, care where in the list the relevant items landed, which matters because position 1 and position 40 are not equally useful to an LLM.',
+      'Everything so far produced a ranked list. These metrics tell you whether that list was actually any good. Crucially, they are computed against pre-defined relevance judgements, not against the model’s final text output.',
+      '**Separating retrieval metrics from generation metrics is critical:**',
+      '- **Generation-side evaluation** tells you if the answer was faithful to the context provided. It cannot tell you if the *right* context was ever retrieved.',
+      '- **Retrieval-side evaluation** measures whether the required evidence made it into the context window at all.',
+      '- When a user reports a bad answer, these metrics are the only way to distinguish between "the model hallucinated" and "the evidence was never there." Those two failures require completely different fixes.',
+      '**Retrieval metrics divide into two main families:**',
+      '- **Set Metrics (Precision and Recall):** These ignore the order of the results. They simply ask: "What fraction of the retrieved set was relevant?" and "What fraction of all relevant documents did we find?"',
+      '- **Rank Metrics (MRR and nDCG):** These care deeply about *where* in the list the relevant items landed. This matters because a relevant chunk at position 1 is vastly more useful to an LLM than one buried at position 40.',
     ],
     math: [
       {
