@@ -2647,7 +2647,7 @@ structured = ChatOpenAI(model="gpt-4o").with_structured_output(Answer)`,
         stack: [
           { name: 'Pydantic', what: 'Data validation using Python type hints', url: 'https://docs.pydantic.dev/' },
           { name: 'Instructor', what: 'Structured extraction for LLMs', url: 'https://python.useinstructor.com/' },
-          { name: 'Outlines', what: 'Generative model structured decoding', url: 'https://outlines-dev.github.io/outlines/' },
+          { name: 'Outlines', what: 'Generative model structured decoding', url: 'https://github.com/dottxt-ai/outlines' },
           { name: 'Zod', what: 'TypeScript-first schema validation', url: 'https://zod.dev/' },
         ],
       },
