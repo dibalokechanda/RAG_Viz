@@ -437,10 +437,13 @@ results = evaluate(
     ],
     governs: ['goldenset', 'versioning', 'retrieval-metrics'],
     detail: [
-      'Any change to a pinned artifact, chunker, embedder, index, prompt, triggers a run against the golden set. Retrieval metrics and generation metrics are computed, compared against the current production baseline, and the change is promoted or blocked on the result.',
-      'The gate needs two kinds of threshold. An absolute floor states the minimum acceptable quality regardless of history, which stops a slow sequence of individually-tolerable regressions from walking the system downhill. A relative tolerance states how much worse than the current baseline a candidate may be, which catches sharp single-change regressions.',
-      'Both must be set above the noise floor of the golden set. A gate that fires on differences smaller than the minimum detectable effect will block good changes at random, and a gate that blocks at random is a gate that gets disabled.',
-      'What the gate protects is subtle: not the code, which tests already cover, but the *interaction* between artifacts. A prompt that was fine with the old reranker, a chunk size that was fine with the old embedder; these are the regressions unit tests cannot see.',
+      '**How it works:** Any change to a pinned artifact (chunker, embedder, index, prompt) triggers a run against the golden set.',
+      'Retrieval and generation metrics are computed, compared against the current production baseline, and the change is either promoted or blocked on the result.',
+      '**The gate needs two kinds of threshold:**',
+      '- **An absolute floor:** States the minimum acceptable quality regardless of history. This stops a slow sequence of individually-tolerable regressions from walking the system downhill.',
+      '- **A relative tolerance:** States how much worse than the current baseline a candidate may be. This catches sharp, single-change regressions.',
+      '**The noise floor:** Both must be set above the minimum detectable effect of the golden set. A gate that blocks at random is a gate that gets disabled.',
+      '**What the gate protects is subtle:** It guards not the code (which unit tests cover), but the *interaction* between artifacts. A prompt that was fine with the old reranker, or a chunk size that was fine with the old embedder—these are the regressions unit tests cannot see.',
     ],
     stack: [
       { name: 'GitHub Actions', what: 'CI/CD workflows for automated evaluation runs', url: 'https://github.com/features/actions' },
@@ -528,8 +531,10 @@ results = evaluate(
         kind: 'method',
         summary: 'Offline gates cannot see real traffic',
         detail: [
-          'The golden set is fixed and finite; production is neither. Shadow evaluation runs the candidate against a mirror of live queries without serving its answers, which surfaces query types the golden set never contained.',
-          'A canary then serves the candidate to a small slice of real traffic while monitoring the same metrics plus user signals. Both are how you find the thing the gate was not measuring, and both are why the fallback stage below has to be fast.',
+          '**The problem:** The golden set is fixed and finite; production is neither.',
+          '**Shadow evaluation** runs the candidate against a mirror of live queries *without* serving its answers, which surfaces query types the golden set never contained.',
+          '**Canary testing** then serves the candidate to a small slice of real traffic while monitoring metrics and user signals.',
+          'Both are how you find the things the gate was not measuring, and both are why the fallback stage below has to be fast.',
         ],
         math: [
           {
@@ -551,8 +556,11 @@ results = evaluate(
         kind: 'metric',
         summary: 'Nothing changed, and quality fell anyway',
         detail: [
-          'Quality can degrade with no deployment at all. The corpus grows and the index partition learned by k-means stops matching the data; HNSW accumulates tombstones; user queries shift toward topics the corpus covers poorly.',
-          'Monitor the leading indicators continuously rather than only at deploy time: ANN recall against a brute-force sample, retrieval score distributions, abstention rate, and the share of queries whose top result falls below a similarity floor. These move before user-visible quality does.',
+          '**The problem:** Quality can degrade with no deployment at all.',
+          '- The corpus grows and the index partition learned by k-means stops matching the data.',
+          '- HNSW accumulates tombstones.',
+          '- User queries shift toward topics the corpus covers poorly.',
+          '**The solution:** Monitor leading indicators continuously, not just at deploy time. Look at ANN recall against a brute-force sample, retrieval score distributions, abstention rate, and the share of queries where the top result falls below a similarity floor. These move *before* user-visible quality does.',
         ],
       },
       {
@@ -561,8 +569,11 @@ results = evaluate(
         kind: 'tradeoff',
         summary: 'A full run on every commit is too slow',
         detail: [
-          'Judging a few hundred queries with an LLM on every push is expensive and slow enough that people route around it.',
-          'Tier it. Run cheap retrieval-only metrics on every commit, since those need no generation and finish in seconds. Run the full generation evaluation on merge to main and before promotion. Reserve the expensive human or LLM-judge passes for release candidates.',
+          '**The problem:** Judging a few hundred queries with an LLM on every push is expensive and slow enough that people route around the gate.',
+          '**The solution:** Tier the evaluation.',
+          '- **On every commit:** Run cheap retrieval-only metrics, since those need no generation and finish in seconds.',
+          '- **On merge to main:** Run the full generation evaluation.',
+          '- **On release candidates:** Reserve the expensive human or LLM-judge passes for the final stage.',
         ],
       },
     ],
