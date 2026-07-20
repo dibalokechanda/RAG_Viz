@@ -1,6 +1,6 @@
 import { MarkerType, type Edge, type Node } from '@xyflow/react'
 import type { Phase, PipelineConfig, Stage } from './types'
-import { offlineStages, onlineStages } from './stages'
+import { offlineStages, onlineStages, platformStages } from './stages'
 
 export interface LaneNodeData extends Record<string, unknown> {
   title: string
@@ -29,29 +29,75 @@ export interface StageNodeData extends Record<string, unknown> {
  * column it is over twenty nodes tall, which forces the whole map down to an
  * unreadable zoom just to fit on screen.
  */
-const COL_OFFLINE_X = 0
-const COL_QUERY_X = 860
-const COL_RETRIEVAL_X = 1720
-const COL_ANSWER_X = 2580
-const GAP = 52
+/* The control plane sits leftmost: it is what feeds ingestion, so the one
+   cross-lane edge we do draw (triggers → loading) is a short hop right. */
+const COL_PLATFORM_X = 0
+const COL_OFFLINE_X = 860
+const COL_QUERY_X = 1720
+const COL_RETRIEVAL_X = 2580
+const COL_ANSWER_X = 3440
+const GAP = 44
 /** Where the online path breaks into further columns. */
 const SPLIT_RETRIEVAL = 'retrieval'
 const SPLIT_ANSWER = 'prompt'
 
-/** Approximate rendered height per node kind, used for vertical packing. */
-function heightOf(stage: Stage): number {
-  switch (stage.kind) {
-    case 'terminal':
-      return 120
-    case 'choice':
-      return 204
-    case 'store':
-      return 152
-    case 'fanout':
-      return 196
-    default:
-      return 144
+/*
+ * Vertical packing needs each card's rendered height before it exists, so this
+ * estimates from content. A flat per-kind constant was not enough: control-plane
+ * cards carry a `governs` row that a plain `sequential` card does not, which made
+ * them overflow their slot and overlap the card below.
+ *
+ * Constants are calibrated against measured cards. Deliberately rounds up —
+ * over-estimating only adds whitespace, under-estimating overlaps.
+ */
+const CARD_BASE = 91 // padding + icon/title head
+const TAGLINE_LINE = 22
+const ROW_LEAD = 14 // margin-top on any chip row
+const RULE_LEAD = 13 // extra padding above rows with a dashed rule
+const CHIP_H = 30
+const CHIP_GAP = 6
+const SLACK = 8
+
+function innerWidth(stage: Stage): number {
+  return (stage.phase === 'online' ? 440 : 415) - 38
+}
+
+/** Greedy line-break count for a row of chips. */
+function chipRowHeight(labels: string[], width: number): number {
+  let rows = 1
+  let x = 0
+  for (const l of labels) {
+    const w = l.length * 7.6 + 22
+    if (x > 0 && x + w > width) {
+      rows++
+      x = w + CHIP_GAP
+    } else {
+      x += w + CHIP_GAP
+    }
   }
+  return rows * CHIP_H + (rows - 1) * CHIP_GAP
+}
+
+function heightOf(stage: Stage): number {
+  const w = innerWidth(stage)
+  let h = CARD_BASE
+
+  // A choice node shows the selected variant's tagline, so budget for the longest.
+  const taglines = [stage.tagline, ...(stage.variants?.map((v) => v.tagline) ?? [])]
+  const longest = Math.max(...taglines.map((t) => t.length))
+  h += Math.max(1, Math.ceil((longest * 7.35) / w)) * TAGLINE_LINE
+
+  if (stage.variants) {
+    h += ROW_LEAD + chipRowHeight(stage.variants.map((v) => v.label), w)
+  }
+  if (stage.governs) {
+    h += ROW_LEAD + RULE_LEAD + chipRowHeight(['governs', ...stage.governs], w)
+  }
+  if (stage.fanoutInto) {
+    h += ROW_LEAD + RULE_LEAD + chipRowHeight(stage.fanoutInto, w)
+  }
+
+  return h + SLACK
 }
 
 /** Which online stages are present under this configuration. */
@@ -147,6 +193,7 @@ export function buildGraph({ config, activeStageId, visitedIds, selectedId }: Bu
     ...pack(online.slice(iAnswer), COL_ANSWER_X, 0),
   ]
   const offlineLaid = pack(offline, COL_OFFLINE_X, 0)
+  const platformLaid = config.platform ? pack(platformStages, COL_PLATFORM_X, 0) : []
 
   const toNode = (
     { stage, x, y }: { stage: Stage; x: number; y: number },
@@ -175,6 +222,15 @@ export function buildGraph({ config, activeStageId, visitedIds, selectedId }: Bu
   })
 
   const nodes: FlowNode[] = [
+    ...(config.platform
+      ? [
+          lane('lane-platform', COL_PLATFORM_X, {
+            title: 'Platform · Governance & Ops',
+            subtitle: 'Governs the pipeline; never on the query path',
+            phase: 'platform' as const,
+          }),
+        ]
+      : []),
     lane('lane-offline', COL_OFFLINE_X, {
       title: 'Offline',
       subtitle: 'Runs once, before any query',
@@ -195,6 +251,7 @@ export function buildGraph({ config, activeStageId, visitedIds, selectedId }: Bu
       subtitle: 'Build the prompt, generate, verify',
       phase: 'online',
     }),
+    ...platformLaid.map((n) => toNode(n)),
     ...offlineLaid.map((n) => toNode(n)),
     ...onlineLaid.map((n, i) => {
       // A stage runs in parallel if it sits after the fan-out and before the merge.
@@ -233,6 +290,22 @@ export function buildGraph({ config, activeStageId, visitedIds, selectedId }: Bu
   for (let i = 0; i < offlineLaid.length - 1; i++) {
     link(offlineLaid[i].stage.id, offlineLaid[i + 1].stage.id)
   }
+  for (let i = 0; i < platformLaid.length - 1; i++) {
+    link(platformLaid[i].stage.id, platformLaid[i + 1].stage.id)
+  }
+  // The control plane relates to most of the pipeline, but only one of those
+  // relationships is a real data flow worth drawing: triggers feed ingestion.
+  // The rest are named on each card via `governs` rather than drawn, which
+  // keeps the canvas from turning into a web of long crossing edges.
+  if (config.platform) {
+    link('triggers', 'loading', {
+      type: 'join',
+      sourceHandle: 'right',
+      targetHandle: 'left',
+      label: 'Feeds ingestion',
+      data: { travelled: false, control: true },
+    })
+  }
   for (let i = 0; i < onlineLaid.length - 1; i++) {
     const source = onlineLaid[i].stage.id
     const target = onlineLaid[i + 1].stage.id
@@ -245,6 +318,7 @@ export function buildGraph({ config, activeStageId, visitedIds, selectedId }: Bu
     type: 'join',
     sourceHandle: 'right',
     targetHandle: 'left',
+    label: 'Reads the index',
     data: { travelled: visitedIds.has('retrieval') },
     markerEnd: arrow(true),
   })

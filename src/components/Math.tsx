@@ -1,10 +1,15 @@
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import type { MathBlock } from '../data/types'
 
+/** Below this the equation is unreadable, so let it scroll instead. */
+const MIN_SCALE = 0.62
+
 /** A single KaTeX expression rendered in display mode. */
 export function Tex({ tex, inline = false }: { tex: string; inline?: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null)
+
   const html = useMemo(() => {
     try {
       return katex.renderToString(tex, { displayMode: !inline, throwOnError: false, output: 'html' })
@@ -14,7 +19,40 @@ export function Tex({ tex, inline = false }: { tex: string; inline?: boolean }) 
     }
   }, [tex, inline])
 
-  return <span className={inline ? 'tex-inline' : 'tex-display'} dangerouslySetInnerHTML={{ __html: html }} />
+  /*
+   * KaTeX cannot wrap, so a wide equation simply overflows the panel. Scale the
+   * whole expression down until it fits. Font-size is the right lever because
+   * KaTeX is em-based throughout, so the height reflows too — a transform would
+   * leave the original height behind and gap the layout.
+   */
+  useLayoutEffect(() => {
+    if (inline) return
+    const el = ref.current
+    if (!el) return
+
+    const fit = () => {
+      el.style.fontSize = ''
+      const avail = el.clientWidth
+      const needed = el.scrollWidth
+      if (avail > 0 && needed > avail + 1) {
+        el.style.fontSize = `${Math.max(MIN_SCALE, avail / needed).toFixed(3)}em`
+      }
+    }
+
+    fit()
+    // The panel width is viewport-driven, so a resize is the only thing that
+    // changes the available space.
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [html, inline])
+
+  return (
+    <span
+      ref={ref}
+      className={inline ? 'tex-inline' : 'tex-display'}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
 }
 
 export default function MathBlockView({ block }: { block: MathBlock }) {

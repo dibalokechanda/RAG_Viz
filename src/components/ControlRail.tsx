@@ -129,6 +129,33 @@ export default function ControlRail({ collapsed }: { collapsed: boolean }) {
       </div>
 
       <div className="rail-group">
+        <h2>Control plane</h2>
+        <div
+          className={`toggle ${config.platform ? 'on' : ''}`}
+          onClick={() => toggle('platform')}
+          role="switch"
+          aria-checked={config.platform}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              toggle('platform')
+            }
+          }}
+        >
+          <div className="switch" />
+          <div className="toggle-text">
+            <b>Governance &amp; Ops lane</b>
+            <span>Triggers, policy, versioning, golden set, CI, fallback</span>
+          </div>
+        </div>
+        <div className="field-note" style={{ marginTop: 12 }}>
+          Six stages that govern the pipeline without sitting on the query path. A query never
+          passes through them, so the walkthrough skips them.
+        </div>
+      </div>
+
+      <div className="rail-group">
         <h2>Optional stages</h2>
         {TOGGLES.map((t) => (
           <div

@@ -66,6 +66,20 @@ function Canvas() {
     setConfig((c) => ({ ...c, [key]: !c[key] }))
   }, [])
 
+  /**
+   * Jump to a stage by id — the `governs` chips use this in place of the edges
+   * we deliberately don't draw. If the target is toggled off it still selects,
+   * so the panel explains it; there is just nothing to pan to.
+   */
+  const focusStage = useCallback(
+    (stageId: string) => {
+      setSelectedId(stageId)
+      const node = posRef.current.get(stageId)
+      if (node) setCenter(node.position.x + 195, node.position.y + 62, { zoom: 0.9, duration: 620 })
+    },
+    [setCenter],
+  )
+
   // Advance the walkthrough.
   useEffect(() => {
     if (!playing) return
@@ -133,8 +147,8 @@ function Canvas() {
   }, [])
 
   const ctx = useMemo(
-    () => ({ config, setVariant, toggle, select: setSelectedId, playing }),
-    [config, setVariant, toggle, playing],
+    () => ({ config, setVariant, toggle, select: setSelectedId, focusStage, playing }),
+    [config, setVariant, toggle, focusStage, playing],
   )
 
   return (

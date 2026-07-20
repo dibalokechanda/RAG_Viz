@@ -7,8 +7,12 @@ import type { IconName } from '../components/Icon'
 
 export type { IconName }
 
-/** Which half of the system a stage belongs to. */
-export type Phase = 'offline' | 'online'
+/**
+ * Which part of the system a stage belongs to. `platform` is the control
+ * plane — it does not sit on the query path at all, it governs the stages
+ * that do.
+ */
+export type Phase = 'offline' | 'online' | 'platform'
 
 /**
  * How a stage behaves in the graph. This distinction is the whole point of the
@@ -202,6 +206,14 @@ export interface Stage {
   variants?: Variant[]
   /** For `fanout` stages: what the query is multiplied into. */
   fanoutInto?: string[]
+  /**
+   * Stage *ids* this one governs. Rendered as clickable chips that jump to the
+   * target stage. Control-plane stages relate to half the pipeline at once, and
+   * drawing an edge for each would turn the canvas into spaghetti — so these
+   * chips carry the relationship, and act as the navigation those edges would
+   * have provided.
+   */
+  governs?: string[]
   /** Root concepts for this stage's mind-map. */
   concepts?: Concept[]
   /** Frame shown when the animated query passes through this stage. */
@@ -224,6 +236,8 @@ export interface PipelineConfig {
   rerank: boolean
   retrievalMetrics: boolean
   evaluation: boolean
+  /** Show the control-plane lane: triggers, policy, versioning, CI, fallback. */
+  platform: boolean
 }
 
 export const defaultConfig: PipelineConfig = {
@@ -239,4 +253,5 @@ export const defaultConfig: PipelineConfig = {
   rerank: true,
   retrievalMetrics: true,
   evaluation: true,
+  platform: true,
 }

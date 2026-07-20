@@ -15,9 +15,26 @@ import MathBlockView from './Math'
 import FigureView from './Figure'
 import Icon, { type IconName } from './Icon'
 
-const R1 = 380
-const R2 = 330
-const CHILD_SPREAD = 0.3
+/*
+ * Radial layout, sized from the cards rather than from magic angles.
+ *
+ * The previous version used a fixed angular spread for children, which at the
+ * child radius gave less arc than a card is wide — so any parent with two
+ * children produced overlapping cards. Every separation here is derived from
+ * CARD_W instead, so it holds for any number of concepts.
+ */
+const CARD_W = 264
+const CARD_H = 112
+const ROOT_W = 300
+const ROOT_H = 132
+/** Minimum clear space between two cards, measured along the arc. */
+const ARC_GAP = 30
+const PITCH = CARD_W + ARC_GAP
+
+const R1_MIN = 400
+const R2_MIN = 330
+/** Fraction of a parent's angular slot its children may occupy. */
+const SLOT_USE = 0.8
 
 const KIND_ICON: Record<Concept['kind'], IconName> = {
   idea: 'bulb',
@@ -80,12 +97,17 @@ function buildConceptGraph(
   selectedId: string | null,
 ): { nodes: CmNode[]; edges: Edge[] } {
   const nodes: CmNode[] = [
-    { id: `root-${stage.id}`, type: 'root', position: { x: -110, y: -46 }, data: { stage } },
+    { id: `root-${stage.id}`, type: 'root', position: { x: -ROOT_W / 2, y: -ROOT_H / 2 }, data: { stage } },
   ]
   const edges: Edge[] = []
 
   const roots = stage.concepts ?? []
   const n = roots.length
+
+  // Grow the ring until every root card has a full card-width of arc to itself.
+  const R1 = Math.max(R1_MIN, (n * PITCH) / (2 * Math.PI))
+  /** Angular slot belonging to one root, including its children. */
+  const slot = ((2 * Math.PI) / n) * SLOT_USE
 
   roots.forEach((c, i) => {
     // Start at the top and go clockwise, so reading order matches the eye's.
@@ -93,7 +115,7 @@ function buildConceptGraph(
     nodes.push({
       id: c.id,
       type: 'concept',
-      position: { x: Math.cos(angle) * R1 - 100, y: Math.sin(angle) * R1 - 38 },
+      position: { x: Math.cos(angle) * R1 - CARD_W / 2, y: Math.sin(angle) * R1 - CARD_H / 2 },
       data: {
         concept: c,
         expanded: expanded.has(c.id),
@@ -111,13 +133,19 @@ function buildConceptGraph(
 
     if (expanded.has(c.id) && c.children?.length) {
       const m = c.children.length
+      // Push the child ring out far enough that m cards fit side by side inside
+      // the parent's slot without touching — and without straying into the
+      // neighbouring parent's slot.
+      const childR = Math.max(R1 + R2_MIN, ((m - 1) * PITCH) / slot)
+      const sep = PITCH / childR
+
       c.children.forEach((ch, j) => {
         // Fan the children outward along the parent's own bearing.
-        const a = angle + (j - (m - 1) / 2) * CHILD_SPREAD
+        const a = angle + (j - (m - 1) / 2) * sep
         nodes.push({
           id: ch.id,
           type: 'concept',
-          position: { x: Math.cos(a) * (R1 + R2) - 100, y: Math.sin(a) * (R1 + R2) - 38 },
+          position: { x: Math.cos(a) * childR - CARD_W / 2, y: Math.sin(a) * childR - CARD_H / 2 },
           data: {
             concept: ch,
             expanded: expanded.has(ch.id),

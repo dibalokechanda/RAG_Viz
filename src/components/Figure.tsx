@@ -28,7 +28,9 @@ function Bars({ f }: { f: Extract<Figure, { kind: 'bars' }> }) {
   const gap = 14
   const panelW = (W - gap * (panels - 1)) / panels
   const plotH = 96
-  const top = panels > 1 ? 16 : 6
+  // Headroom for the panel title; text is drawn from its baseline, so a label
+  // at y=9 actually starts above the viewBox and gets clipped.
+  const top = panels > 1 ? 24 : 8
   const h = top + plotH + 30
   const yMax = f.yMax ?? Math.max(...f.series.flatMap((s) => s.values)) * 1.12
 
@@ -42,7 +44,7 @@ function Bars({ f }: { f: Extract<Figure, { kind: 'bars' }> }) {
         return (
           <g key={si}>
             {panels > 1 && (
-              <text x={x0 + panelW / 2} y={9} textAnchor="middle" fontSize="11.5" fontFamily={MONO} fill={INK}>
+              <text x={x0 + panelW / 2} y={14} textAnchor="middle" fontSize="11.5" fontFamily={MONO} fill={INK}>
                 {s.label}
               </text>
             )}
@@ -63,18 +65,25 @@ function Bars({ f }: { f: Extract<Figure, { kind: 'bars' }> }) {
                     stroke={on ? INK : MUTE}
                     strokeWidth="1"
                   />
-                  {f.showValues && (
-                    <text
-                      x={bx + bw / 2}
-                      y={top + plotH - bh - 4}
-                      textAnchor="middle"
-                      fontSize="10.5"
-                      fontFamily={MONO}
-                      fill={LABEL}
-                    >
-                      {v.toFixed(v < 1 ? 3 : 1)}
-                    </text>
-                  )}
+                  {f.showValues &&
+                    (() => {
+                      // A tall bar leaves no headroom for a label above it, and
+                      // it would collide with the panel title. Put the value
+                      // inside the bar instead once there is room for it.
+                      const inside = bh > 26 && on
+                      return (
+                        <text
+                          x={bx + bw / 2}
+                          y={inside ? top + plotH - bh + 14 : top + plotH - bh - 5}
+                          textAnchor="middle"
+                          fontSize="10.5"
+                          fontFamily={MONO}
+                          fill={inside ? '#fff' : LABEL}
+                        >
+                          {v.toFixed(v < 1 ? 3 : 1)}
+                        </text>
+                      )
+                    })()}
                   <text
                     x={bx + bw / 2}
                     y={top + plotH + 12}
@@ -122,7 +131,9 @@ function Bars({ f }: { f: Extract<Figure, { kind: 'bars' }> }) {
 function Curve({ f }: { f: Extract<Figure, { kind: 'curve' }> }) {
   const padL = 44
   const padR = 8
-  const padT = 8
+  // Band above the plot for the y-axis label, so it clears the top tick — those
+  // two were landing on each other whenever the label was wide.
+  const padT = 28
   const plotH = 124
   const h = padT + plotH + 30
   const plotW = W - padL - padR
@@ -172,19 +183,50 @@ function Curve({ f }: { f: Extract<Figure, { kind: 'curve' }> }) {
         />
       ))}
 
-      {f.marks?.map((m, i) => (
-        <g key={i}>
-          <circle cx={sx(m.x)} cy={sy(m.y)} r="2.6" fill={INK} />
-          <text x={sx(m.x) + 5} y={sy(m.y) - 4} fontSize="10.5" fontFamily={MONO} fill={INK}>
-            {m.label}
-          </text>
-        </g>
-      ))}
+      {(() => {
+        // Nudge labels apart when two marks sit close together, otherwise
+        // adjacent annotations overprint each other.
+        const placed: { x: number; y: number; w: number }[] = []
+        return f.marks?.map((m, i) => {
+        const px = sx(m.x)
+        const rawY = Math.max(padT + 9, sy(m.y) - 6)
+        // Flip the label to the left near the right edge so it cannot run off
+        // the figure.
+        const flip = px > W - padR - 70
+        const w = m.label.length * 6.3
+        const x0 = flip ? px - 6 - w : px + 6
+        let py = rawY
+        for (let guard = 0; guard < 6; guard++) {
+          const clash = placed.some(
+            (p) => Math.abs(p.y - py) < 13 && x0 < p.x + p.w + 4 && p.x < x0 + w + 4,
+          )
+          if (!clash) break
+          py += 14
+        }
+        placed.push({ x: x0, y: py, w })
+        return (
+          <g key={i}>
+            {/* The dot stays on the data point; only the label is nudged. */}
+            <circle cx={px} cy={sy(m.y)} r="2.8" fill={INK} />
+            <text
+              x={flip ? px - 6 : px + 6}
+              y={py}
+              textAnchor={flip ? 'end' : 'start'}
+              fontSize="10.5"
+              fontFamily={MONO}
+              fill={INK}
+            >
+              {m.label}
+            </text>
+          </g>
+        )
+        })
+      })()}
 
       <text x={W - padR} y={h - 4} textAnchor="end" fontSize="10.5" fontFamily={MONO} fill={LABEL}>
         {f.xLabel}
       </text>
-      <text x={0} y={padT + 4} fontSize="10.5" fontFamily={MONO} fill={LABEL}>
+      <text x={0} y={12} fontSize="10.5" fontFamily={MONO} fill={LABEL}>
         {f.yLabel}
       </text>
     </Frame>
@@ -197,13 +239,15 @@ function Segments({ f }: { f: Extract<Figure, { kind: 'segments' }> }) {
   const rowH = 34
   const gap = 20
   const labelW = 4
-  const h = f.rows.length * (rowH + gap) + 6
+  /** The first row's label is drawn from its baseline, so it needs room above. */
+  const TOP = 6
+  const h = TOP + f.rows.length * (rowH + gap) + 6
   const trackW = W - labelW
 
   return (
     <Frame h={h}>
       {f.rows.map((r, i) => {
-        const y = i * (rowH + gap)
+        const y = TOP + i * (rowH + gap)
         return (
           <g key={i}>
             <text x={0} y={y + 8} fontSize="11" fontFamily={MONO} fill={LABEL}>
@@ -254,7 +298,9 @@ function Ranked({ f }: { f: Extract<Figure, { kind: 'ranked' }> }) {
   const gap = 3
   const cw = (W - gap * (n - 1)) / n
   const ch = 40
-  const h = ch + 30
+  /** Band above the cells for the "first relevant" marker. */
+  const TOP = 16
+  const h = TOP + ch + 26
   const maxG = f.maxGrade ?? Math.max(...f.grades, 1)
   const firstRel = f.grades.findIndex((g) => g > 0)
 
@@ -266,10 +312,10 @@ function Ranked({ f }: { f: Extract<Figure, { kind: 'ranked' }> }) {
         const opacity = g === 0 ? 0 : 0.18 + 0.82 * (g / maxG)
         return (
           <g key={i}>
-            <rect x={x} y={10} width={cw} height={ch} rx="2" fill={INK} fillOpacity={opacity} stroke={g === 0 ? MUTE : 'none'} strokeDasharray={g === 0 ? '3 2' : undefined} />
+            <rect x={x} y={TOP} width={cw} height={ch} rx="2" fill={INK} fillOpacity={opacity} stroke={g === 0 ? MUTE : 'none'} strokeDasharray={g === 0 ? '3 2' : undefined} />
             <text
               x={x + cw / 2}
-              y={10 + ch / 2 + 3.5}
+              y={TOP + ch / 2 + 4}
               textAnchor="middle"
               fontSize="11.5"
               fontFamily={MONO}
@@ -286,8 +332,10 @@ function Ranked({ f }: { f: Extract<Figure, { kind: 'ranked' }> }) {
       {f.markFirstRelevant && firstRel >= 0 && (
         <g>
           <text
-            x={firstRel * (cw + gap) + cw / 2}
-            y={7}
+            // Centred on the cell, but clamped so a mark over cell 1 does not
+            // hang off the left edge.
+            x={Math.max(24, firstRel * (cw + gap) + cw / 2)}
+            y={11}
             textAnchor="middle"
             fontSize="10.5"
             fontFamily={MONO}
@@ -307,15 +355,19 @@ function Blocks({ f }: { f: Extract<Figure, { kind: 'blocks' }> }) {
   const rowH = 36
   const arrowH = 22
   const gap = 6
+  /** Space above a row that carries a label, so the label is not clipped. */
+  const LABEL_H = 15
   let h = 0
   f.rows.forEach((r) => {
-    h += rowH + gap + (r.arrow !== undefined ? arrowH : 0)
+    h += (r.label ? LABEL_H : 0) + rowH + gap + (r.arrow !== undefined ? arrowH : 0)
   })
 
   let y = 0
   return (
     <Frame h={h}>
       {f.rows.map((r, i) => {
+        // Reserve the label band before drawing the boxes for this row.
+        if (r.label) y += LABEL_H
         const rowY = y
         const totalSpan = r.boxes.reduce((s, b) => s + (b.span ?? 1), 0)
         const inner = W - gap * (r.boxes.length - 1)
@@ -323,7 +375,7 @@ function Blocks({ f }: { f: Extract<Figure, { kind: 'blocks' }> }) {
         const el = (
           <g key={i}>
             {r.label && (
-              <text x={0} y={rowY - 2} fontSize="10.5" fontFamily={MONO} fill={LABEL}>
+              <text x={0} y={rowY - 5} fontSize="10.5" fontFamily={MONO} fill={LABEL}>
                 {r.label}
               </text>
             )}
@@ -348,7 +400,11 @@ function Blocks({ f }: { f: Extract<Figure, { kind: 'blocks' }> }) {
                     x={bx + bw / 2}
                     y={rowY + rowH / 2 + 3}
                     textAnchor="middle"
-                    fontSize={bw < 52 ? 10 : 11.5}
+                    // Shrink to fit the box rather than spilling past its edges.
+                    fontSize={Math.max(
+                      7.5,
+                      Math.min(11.5, ((bw - 12) / (b.text.length * 0.62)) | 0 || 7.5),
+                    )}
                     fontFamily={MONO}
                     fill={b.filled ? '#fff' : 'var(--text-dim)'}
                   >

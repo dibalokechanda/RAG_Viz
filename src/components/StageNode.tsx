@@ -1,7 +1,17 @@
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
 import type { StageNodeData } from '../data/graph'
 import { usePipeline } from '../PipelineContext'
+import { stageById } from '../data/stages'
 import Icon from './Icon'
+
+/** First node in a column — nothing flows into it from above. */
+const COLUMN_HEADS = new Set(['documents', 'user-query', 'triggers'])
+/** Last node in a column — nothing flows out of it downward. */
+const COLUMN_TAILS = new Set(['final', 'index', 'fallback'])
+/** Nodes that receive a cross-lane edge on their left edge. */
+const SIDE_TARGETS = new Set(['retrieval', 'loading'])
+/** Nodes that emit a cross-lane edge from their right edge. */
+const SIDE_SOURCES = new Set(['index', 'triggers'])
 
 const KIND_LABEL: Record<string, string> = {
   sequential: 'step',
@@ -14,7 +24,7 @@ const KIND_LABEL: Record<string, string> = {
 
 export default function StageNode({ data }: NodeProps<Node<StageNodeData>>) {
   const { stage, variantId, active, done, selected, multiplier } = data
-  const { setVariant, playing } = usePipeline()
+  const { setVariant, playing, focusStage } = usePipeline()
 
   const variant = stage.variants?.find((v) => v.id === variantId)
   const tagline = variant ? variant.tagline : stage.tagline
@@ -36,10 +46,8 @@ export default function StageNode({ data }: NodeProps<Node<StageNodeData>>) {
 
   return (
     <div className={classes}>
-      {stage.id !== 'documents' && stage.id !== 'user-query' && (
-        <Handle type="target" position={Position.Top} />
-      )}
-      {stage.id === 'retrieval' && <Handle type="target" position={Position.Left} id="left" />}
+      {!COLUMN_HEADS.has(stage.id) && <Handle type="target" position={Position.Top} />}
+      {SIDE_TARGETS.has(stage.id) && <Handle type="target" position={Position.Left} id="left" />}
 
       {multiplier && multiplier > 1 && <div className="multiplier-badge">×{multiplier} parallel</div>}
       {done && !active && <div className="node-check">✓</div>}
@@ -78,6 +86,25 @@ export default function StageNode({ data }: NodeProps<Node<StageNodeData>>) {
         </div>
       )}
 
+      {stage.governs && (
+        <div className="governs-row">
+          <span className="governs-label">governs</span>
+          {stage.governs.map((id) => (
+            <button
+              key={id}
+              className="governs-chip"
+              title={`Go to ${stageById.get(id)?.label ?? id}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                focusStage(id)
+              }}
+            >
+              {stageById.get(id)?.label ?? id}
+            </button>
+          ))}
+        </div>
+      )}
+
       {stage.fanoutInto && (
         <div className="fanout-row">
           {stage.fanoutInto.map((b) => (
@@ -88,10 +115,8 @@ export default function StageNode({ data }: NodeProps<Node<StageNodeData>>) {
         </div>
       )}
 
-      {stage.id !== 'final' && stage.id !== 'index' && (
-        <Handle type="source" position={Position.Bottom} />
-      )}
-      {stage.id === 'index' && <Handle type="source" position={Position.Right} id="right" />}
+      {!COLUMN_TAILS.has(stage.id) && <Handle type="source" position={Position.Bottom} />}
+      {SIDE_SOURCES.has(stage.id) && <Handle type="source" position={Position.Right} id="right" />}
     </div>
   )
 }

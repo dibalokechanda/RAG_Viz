@@ -7,6 +7,8 @@ interface PipelineContextValue {
   setVariant: (stageId: string, variantId: string) => void
   toggle: (key: keyof PipelineConfig) => void
   select: (stageId: string | null) => void
+  /** Select a stage and pan the camera to it. Used by the `governs` chips. */
+  focusStage: (stageId: string) => void
   /** True while the animated walkthrough is running. */
   playing: boolean
 }

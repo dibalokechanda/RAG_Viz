@@ -254,6 +254,13 @@ body {
   border-top-color: var(--lane-online);
 }
 
+/* The control plane is not part of the flow, so its rule is dashed — the same
+   grammar the optional stages use. */
+.lane-head.platform {
+  border-top-style: dashed;
+  border-top-color: var(--border-heavy);
+}
+
 .lane-head-title {
   color: var(--text-faint);
   margin-bottom: 6px;
@@ -318,6 +325,16 @@ body {
 
 .node.online::before {
   border-top-color: var(--lane-online);
+}
+
+/* Control-plane cards sit off the flow: dashed rule, sunken surface. */
+.node.platform::before {
+  border-top-style: dashed;
+  border-top-color: var(--border-heavy);
+}
+
+.node.platform {
+  background: var(--surface-sunken);
 }
 
 /* Optionality is a dashed border, not a colour. */
@@ -461,6 +478,48 @@ body {
   background: var(--surface-hover);
   color: var(--text-dim);
   white-space: nowrap;
+}
+
+/* Control-plane cards name what they govern instead of drawing an edge to it. */
+.governs-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px dashed var(--border-strong);
+}
+
+.governs-label {
+  font-family: var(--mono);
+  font-size: var(--fs-canvas-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-right: 2px;
+}
+
+/* Clickable: these stand in for the edges we chose not to draw, so they need
+   to read as navigation rather than decoration. */
+.governs-chip {
+  font-family: var(--mono);
+  font-size: var(--fs-canvas-label);
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px dashed var(--border-strong);
+  background: var(--surface);
+  color: var(--text-dim);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 130ms;
+}
+
+.governs-chip:hover {
+  border-style: solid;
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
 }
 
 .multiplier-badge {

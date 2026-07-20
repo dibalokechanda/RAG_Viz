@@ -33,6 +33,13 @@ export type IconName =
   | 'checkdoc'
   | 'gauge'
   | 'check'
+  // platform / control plane
+  | 'sync'
+  | 'shield'
+  | 'box'
+  | 'target'
+  | 'rollback'
+  | 'pulse'
   // concept kinds
   | 'bulb'
   | 'fx'
@@ -215,6 +222,43 @@ const P: Record<IconName, React.ReactNode> = {
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M8 12.2l2.8 2.8L16 9" />
+    </>
+  ),
+  sync: (
+    <>
+      <path d="M20.5 11.5A8.5 8.5 0 0 0 5.6 6.4M3.5 12.5a8.5 8.5 0 0 0 14.9 5.1" />
+      <path d="M20.5 5.5v6h-6M3.5 18.5v-6h6" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 2.5 20 6v6.2c0 4.7-3.3 8.3-8 9.3-4.7-1-8-4.6-8-9.3V6z" />
+      <path d="M8.8 12.2 11 14.4l4.3-4.5" />
+    </>
+  ),
+  box: (
+    <>
+      <path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z" />
+      <path d="M3.5 7 12 11.6 20.5 7M12 11.6v9.9" />
+    </>
+  ),
+  target: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4.4" />
+      <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+    </>
+  ),
+  rollback: (
+    <>
+      <path d="M3.5 10h10.5a5.5 5.5 0 1 1 0 11H9" />
+      <path d="M7 6 3.2 10 7 14" />
+    </>
+  ),
+  pulse: (
+    <>
+      <path d="M2.5 12h4l2.5-6.5L14 18.5l2.5-6.5h5" />
+      <circle cx="21.5" cy="12" r="0.9" fill="currentColor" stroke="none" />
     </>
   ),
   bulb: (

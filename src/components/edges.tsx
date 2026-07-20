@@ -54,7 +54,7 @@ export function PipelineEdge({
  * Routed by hand up and over the top of the canvas. A direct path would cut
  * straight through the query-processing column that sits between the two.
  */
-export function JoinEdge({ id, sourceX, sourceY, targetX, targetY, markerEnd }: EdgeProps) {
+export function JoinEdge({ id, sourceX, sourceY, targetX, targetY, markerEnd, label }: EdgeProps) {
   const r = 12
   const out = sourceX + 44
   const inn = targetX - 44
@@ -85,7 +85,7 @@ export function JoinEdge({ id, sourceX, sourceY, targetX, targetY, markerEnd }: 
           className="edge-chip edge-chip-join"
           style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
         >
-          Reads the index
+          {label ?? 'Reads the index'}
         </div>
       </EdgeLabelRenderer>
     </>
