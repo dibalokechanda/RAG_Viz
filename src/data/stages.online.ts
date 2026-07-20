@@ -1310,9 +1310,14 @@ hybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
     ordinal: '6c',
     tagline: 'Remove redundancy before it eats the context budget',
     detail: [
-      'Retrieved sets are redundant in ways that are structural rather than accidental. Overlapping chunks share text by construction. Fan-out branches retrieve the same chunks. Corpora contain the same passage in several documents, a policy quoted in four places, a boilerplate paragraph repeated across every contract.',
-      'The cost is twofold. Duplicates occupy top-K slots that could hold new evidence, and they make a claim look corroborated when it has a single source. An LLM given the same fact three times treats it as three independent confirmations.',
-      'There are four levels, in ascending order of cost and power: exact, near-duplicate by hashing, semantic by embedding, and diversity-aware selection via MMR.',
+      '**Retrieved sets are often structurally redundant:**',
+      '- Overlapping chunks share text by construction.',
+      '- Fan-out branches retrieve the same chunks.',
+      '- Corpora contain the same passage across multiple documents (e.g., boilerplate policies).',
+      '**The cost of redundancy is twofold:**',
+      '- **Wasted context:** Duplicates occupy valuable top-K slots that could hold new evidence.',
+      '- **False corroboration:** An LLM given the same fact three times treats it as three independent confirmations.',
+      '**There are four levels of deduplication:** exact, near-duplicate by hashing, semantic by embedding, and diversity-aware selection (MMR).',
     ],
     math: [
       {
@@ -1331,8 +1336,9 @@ hybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
         kind: 'method',
         summary: 'Hash the normalised text',
         detail: [
-          'Normalise whitespace, case and punctuation, then hash. Anything colliding is byte-identical and can be collapsed immediately, keeping the highest-ranked copy and recording the rest as additional sources for citation.',
-          'Effectively free, one hash per candidate, and it catches the genuinely common case of the same chunk indexed twice through two ingestion paths.',
+          '**How it works:** Normalise whitespace, case and punctuation, then hash.',
+          'Anything colliding is byte-identical and can be collapsed immediately. Keep the highest-ranked copy and record the rest as additional sources for citation.',
+          '**Cost:** Effectively free (one hash per candidate). It catches the genuinely common case of the same chunk indexed twice through two ingestion paths.',
         ],
         math: [
           {
@@ -1348,8 +1354,9 @@ hybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
         kind: 'method',
         summary: 'MinHash and SimHash over shingles',
         detail: [
-          'Overlapping chunks share 10–20% of their text; document revisions differ in a sentence. Exact hashing misses both. Shingle the text into overlapping k-grams and compare the sets by Jaccard similarity.',
-          'Comparing every pair is O(K²), which is fine for K = 50 and impossible for a corpus. MinHash makes it near-linear by turning set similarity into a hash-collision probability.',
+          '**Why exact hashing fails:** Overlapping chunks share 10–20% of their text, and document revisions often differ by just a sentence. Exact hashing misses both.',
+          '**The solution:** Shingle the text into overlapping k-grams and compare the sets by Jaccard similarity.',
+          'Comparing every pair is O(K²), which is fine for K=50 but impossible for a corpus. **MinHash** makes it near-linear by turning set similarity into a hash-collision probability.',
         ],
         figures: [
           {
@@ -1441,8 +1448,9 @@ hybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
         kind: 'method',
         summary: 'Same meaning, no shared words',
         detail: [
-          'Two chunks can state the same fact with almost no lexical overlap, a specification and its plain-English summary, the same policy in two house styles. Shingle-based methods see nothing; embeddings see near-identity.',
-          'You already have the vectors, so this is a K×K cosine matrix. At K = 50 that is 2,500 dot products, which is nothing.',
+          '**Why lexical methods fail:** Two chunks can state the same fact with almost no lexical overlap (e.g., a specification and its plain-English summary). Shingle-based methods see nothing, but embeddings see near-identity.',
+          '**The solution:** You already have the vectors, so compute a K×K cosine matrix.',
+          'At K=50, that is 2,500 dot products, which takes less than a millisecond.',
         ],
         math: [
           {
@@ -1464,8 +1472,10 @@ hybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
         kind: 'formula',
         summary: 'Optimise relevance and novelty jointly',
         detail: [
-          'The other three methods remove duplicates after the fact. Maximal Marginal Relevance changes the selection rule itself: build the result set greedily, at each step picking the candidate that maximises relevance to the query *minus* its similarity to everything already chosen.',
-          'This handles the case thresholding cannot, five chunks that are each only 0.85 similar to one another, individually below any dedup threshold, but which collectively say one thing and crowd out every other angle.',
+          'The other three methods remove duplicates after the fact. **Maximal Marginal Relevance (MMR)** changes the selection rule itself:',
+          '- Build the result set greedily.',
+          '- At each step, pick the candidate that maximises relevance to the query *minus* its similarity to everything already chosen.',
+          '**The advantage:** This handles the case thresholding cannot—five chunks that are each only 0.85 similar to one another (individually below any dedup threshold), but which collectively say one thing and crowd out every other angle.',
         ],
         math: [
           {
@@ -1495,8 +1505,9 @@ hybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
         kind: 'pitfall',
         summary: 'Repetition is sometimes the signal',
         detail: [
-          'If the question is "how many sources say X" or "is this the consensus", collapsing duplicates destroys exactly the evidence needed. Aggregation questions want the count, not the distinct set.',
-          'Independent corroboration is also real: three separate studies reaching the same conclusion are not redundant. Deduplicate on text similarity, but preserve and surface the source count so the model can distinguish one fact repeated from three sources agreeing.',
+          '**Aggregation queries:** If the question is "how many sources say X" or "is this the consensus", collapsing duplicates destroys exactly the evidence needed. Aggregation questions want the count, not the distinct set.',
+          '**Independent corroboration is real:** Three separate studies reaching the same conclusion are not redundant.',
+          '**The mitigation:** Deduplicate on text similarity, but preserve and surface the source count so the model can distinguish one fact repeated from three sources agreeing.',
         ],
       },
     ],
