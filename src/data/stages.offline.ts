@@ -14,8 +14,16 @@ export const offlineStages: Stage[] = [
     ordinal: '2',
     tagline: 'The raw corpus',
     detail: [
-      'Whatever you are making searchable: PDFs, DOCX, Markdown, HTML, Confluence spaces, GitHub repos, database rows.',
-      'Nothing here is RAG-specific yet. It matters only because every downstream decision, how you chunk, what metadata survives, whether OCR is in the loop, is determined by what these files actually are.',
+      'Whatever you are making searchable: **PDFs**, **DOCX**, **Markdown**, **HTML**, **Confluence spaces**, **GitHub repos**, or **database rows**.',
+      'Nothing here is RAG-specific yet, but it matters immensely. Every downstream decision is determined by what these files actually are:',
+      '- **Chunking strategy** depends on document structure',
+      '- **Metadata extraction** depends on available source fields',
+      '- **OCR requirements** depend on whether the text is digital or scanned',
+    ],
+    stack: [
+      { name: 'LangChain', what: 'Document loaders for 100+ formats', url: 'https://python.langchain.com/docs/how_to/#document-loaders' },
+      { name: 'LlamaIndex', what: 'Data connectors and readers', url: 'https://docs.llamaindex.ai/en/stable/' },
+      { name: 'Unstructured', what: 'Parse PDFs, DOCX, HTML, images into clean text', url: 'https://unstructured.io/' },
     ],
   },
 
@@ -28,9 +36,15 @@ export const offlineStages: Stage[] = [
     ordinal: '2a',
     tagline: 'Bytes → text, format by format',
     detail: [
-      'One loader per source format, each with its own failure modes. The important split is not by file extension but by whether the text is already there.',
-      'A digital PDF has a text layer, so the parser reads it directly. A scanned PDF is images of text; it needs OCR first, and OCR introduces errors that the cleaning stage has to undo.',
-      'Markdown loaders are worth calling out separately: they preserve heading hierarchy, and that hierarchy is exactly what recursive and parent–child chunking need later. Losing it here means you cannot get it back.',
+      'You will likely need **one loader per source format**, each with its own failure modes. The most important split is not by file extension, but by whether the text is already there:',
+      '- **Digital PDFs**: Carry a text layer directly, allowing the parser to read it.',
+      '- **Scanned PDFs**: Images of text that require OCR first. OCR introduces errors that the cleaning stage has to undo.',
+      '- **Markdown/HTML**: Preserve heading hierarchy, which is exactly what semantic chunking needs later. Losing it here means you cannot get it back.',
+    ],
+    stack: [
+      { name: 'PyMuPDF (fitz)', what: 'High-performance PDF parsing', url: 'https://pymupdf.readthedocs.io/' },
+      { name: 'Tesseract', what: 'Open-source OCR engine', url: 'https://github.com/tesseract-ocr/tesseract' },
+      { name: 'BeautifulSoup', what: 'HTML parsing and extraction', url: 'https://beautiful-soup-4.readthedocs.io/' },
     ],
     example: {
       beforeLabel: 'Digital PDF',
@@ -46,8 +60,10 @@ export const offlineStages: Stage[] = [
         kind: 'method',
         summary: 'Text layer already present',
         detail: [
-          'PDF, DOCX and HTML carry the characters directly. The parser walks the document object model and emits text plus positional metadata.',
-          'The hard part is not extraction but reading order. A two-column academic paper stores text in the order it was drawn, not the order it is read, naive extraction interleaves the columns and produces fluent nonsense that no downstream stage can detect.',
+          'Formats like **PDF**, **DOCX**, and **HTML** carry the characters directly. The parser walks the document object model and emits text plus positional metadata.',
+          '**The hard part is not extraction, but reading order.**',
+          '- A two-column academic paper stores text in the order it was drawn, not the order it is read.',
+          '- Naive extraction interleaves the columns and produces **fluent nonsense** that no downstream stage can detect.',
         ],
         children: [
           {
@@ -66,8 +82,10 @@ export const offlineStages: Stage[] = [
             kind: 'pitfall',
             summary: 'Flattening destroys row/column association',
             detail: [
-              'A table flattened to prose loses the link between a cell and its header. "42" becomes unretrievable because nothing near it says what it measures.',
-              'Serialise tables to Markdown or HTML so the header stays adjacent to each value, or emit one chunk per row with the header repeated.',
+              'A table flattened to prose loses the link between a cell and its header. For example, **"42"** becomes unretrievable because nothing near it says what it measures.',
+              '**Best Practices:**',
+              '- Serialise tables to Markdown or HTML so the header stays adjacent to each value.',
+              '- Or, emit **one chunk per row** with the header repeated.',
             ],
           },
         ],
@@ -94,6 +112,12 @@ export const offlineStages: Stage[] = [
             ],
             note: 'Those errors concentrate in exactly the tokens you most need to match exactly: proper nouns, part numbers, dosages, identifiers.',
           },
+        ],
+        stack: [
+          { name: 'Docling', what: 'Fast, accurate document parsing with layout awareness', url: 'https://github.com/DS4SD/docling' },
+          { name: 'Marker', what: 'Converts PDF to Markdown quickly and accurately', url: 'https://github.com/VikParuchuri/marker' },
+          { name: 'Unstructured', what: 'Enterprise-grade OCR and document partitioning', url: 'https://unstructured.io/' },
+          { name: 'AWS Textract', what: 'Managed service for extracting text and data', url: 'https://aws.amazon.com/textract/' },
         ],
       },
       {
@@ -123,8 +147,11 @@ export const offlineStages: Stage[] = [
     ordinal: '2b',
     tagline: 'Capture provenance while you still have it',
     detail: [
-      'Performed during loading, because this is the last moment the information exists. Once a document has been flattened into a wall of text; you cannot recover which page a sentence came from.',
-      'Every chunk later inherits this metadata. That inheritance is what makes citations, page-level filtering, and "only search documents from this year" possible at query time.',
+      'Performed during loading, because **this is the last moment the information exists**. Once a document has been flattened into a wall of text, you cannot recover which page a sentence came from.',
+      'Every chunk later inherits this metadata. That inheritance powers:',
+      '- **Citations and grounding**',
+      '- **Page-level filtering**',
+      '- **Temporal scoping** (e.g., "only search documents from this year")',
     ],
     example: {
       beforeLabel: 'Extracted per document',
@@ -190,9 +217,9 @@ export const offlineStages: Stage[] = [
     ordinal: '2c',
     tagline: 'Deterministic preprocessing, no LLM',
     detail: [
-      'Strip the artifacts of the source format so they do not become retrievable content: running headers, footers, page numbers, duplicated whitespace, encoding mismatches, OCR garbage.',
-      'This stage is deliberately dumb. It is rules and regexes, not a model. Determinism matters because you want to be able to re-run ingestion and get byte-identical output, otherwise you cannot tell whether a retrieval regression came from your data or your code.',
-      'Corpus-level near-duplicate removal also belongs here. If the same policy document exists in four revisions, all four will be retrieved together, and they will crowd out everything else in your top-K.',
+      'Strip the artifacts of the source format so they do not become retrievable content: **running headers**, **footers**, **page numbers**, duplicated whitespace, encoding mismatches, and OCR garbage.',
+      '**This stage is deliberately dumb.** It is rules and regexes, not a model. Determinism matters because you want to be able to re-run ingestion and get byte-identical output, otherwise you cannot tell whether a retrieval regression came from your data or your code.',
+      '**Corpus-level near-duplicate removal** also belongs here. If the same policy document exists in four revisions, all four will be retrieved together, crowding out everything else in your top-K.',
     ],
     tradeoffs: {
       gains: ['Reproducible ingestion', 'No page furniture polluting chunks', 'Cheap and fast'],
@@ -276,9 +303,11 @@ export const offlineStages: Stage[] = [
     tagline: 'Split documents into retrievable units',
     detail: [
       'The single most consequential design decision in the offline path. A chunk is the unit of retrieval; you cannot retrieve half a chunk, and you cannot retrieve across two of them.',
-      'The core tension never goes away. Large chunks carry more context but more noise; small chunks are more precise but can sever the sentence from the fact that explains it.',
-      'There is also a dilution effect that is easy to miss. An embedding is roughly an average of what the text is about, so a single relevant sentence inside a large chunk contributes proportionally less to the vector, and the chunk drifts away from the query in embedding space.',
-      'Worth stating plainly, because it is the thing most often got wrong: chunking decisions are permanent in a way nothing else here is. A bad prompt can be rewritten in a minute; a bad chunking strategy means re-embedding the entire corpus. Sweep it against a labelled query set before committing, not after.',
+      '**The core tension never goes away:**',
+      '- **Large chunks** carry more context but more noise.',
+      '- **Small chunks** are more precise but can sever the sentence from the fact that explains it.',
+      'There is also a **dilution effect** that is easy to miss. An embedding is roughly an average of what the text is about. A single relevant sentence inside a large chunk contributes proportionally less to the vector, causing the chunk to drift away from the query in embedding space.',
+      '**Worth stating plainly:** Chunking decisions are permanent. A bad prompt can be rewritten in a minute; a bad chunking strategy means re-embedding the entire corpus. Sweep it against a labelled query set before committing, not after.',
     ],
     figures: [
       {
@@ -467,7 +496,7 @@ export const offlineStages: Stage[] = [
         label: 'Semantic',
         tagline: 'Split where the topic changes',
         detail:
-          'Boundaries come from meaning, not from counting. Split into sentences or paragraphs, embed each one, walk the sequence comparing neighbours, and cut wherever similarity drops sharply, a sharp drop is the signal that the topic moved.',
+          'Boundaries come from meaning, not from counting.\n\n- Split into sentences or paragraphs.\n- Embed each one and walk the sequence comparing neighbours.\n- **Cut wherever similarity drops sharply**; a sharp drop is the signal that the topic moved.',
         figures: [
           {
             kind: 'curve',
@@ -631,6 +660,12 @@ export const offlineStages: Stage[] = [
         ],
       },
     ],
+    stack: [
+      { name: 'LangChain', what: 'RecursiveCharacterTextSplitter and others', url: 'https://python.langchain.com/docs/how_to/#text-splitters' },
+      { name: 'LlamaIndex', what: 'SentenceSplitter, SemanticSplitter, node parsers', url: 'https://docs.llamaindex.ai/en/stable/module_guides/loading/node_parsers/' },
+      { name: 'Unstructured', what: 'Partition-based chunking by document element', url: 'https://docs.unstructured.io/open-source/core-functionality/chunking' },
+      { name: 'spaCy', what: 'Sentence-level splitting with linguistic models', url: 'https://spacy.io/' },
+    ],
     trace: {
       headline: 'Corpus chunked',
       payload: '1,847 pages → 9,304 chunks (recursive, ≈480 tokens each)',
@@ -647,7 +682,9 @@ export const offlineStages: Stage[] = [
     tagline: 'Every chunk becomes a dense vector',
     detail: [
       'Each chunk goes through the embedding model and comes out as a fixed-length vector. Semantic similarity becomes geometric proximity, which is what makes approximate search possible at all.',
-      'Re-embedding has two very different costs, and confusing them is expensive. Adding new documents means embedding only the new chunks. Changing the embedding model means re-embedding the entire corpus, old and new vectors live in different spaces and cannot be compared.',
+      '**Re-embedding has two very different costs, and confusing them is expensive:**',
+      '- **Adding new documents** means embedding only the new chunks.',
+      '- **Changing the embedding model** means re-embedding the *entire corpus*. Old and new vectors live in different spaces and cannot be compared.',
     ],
     math: [
       {
@@ -679,6 +716,13 @@ export const offlineStages: Stage[] = [
       },
     ],
     example: { before: 'Chunk', after: 'Embedding Model → Vector ∈ ℝⁿ', mono: true },
+    stack: [
+      { name: 'OpenAI', what: 'text-embedding-3-small / large, the default choice', url: 'https://platform.openai.com/docs/guides/embeddings' },
+      { name: 'Cohere', what: 'Embed v3, multilingual, with input_type parameter', url: 'https://cohere.com/embed' },
+      { name: 'Voyage AI', what: 'Code and domain-specific embedding models', url: 'https://www.voyageai.com/' },
+      { name: 'Sentence Transformers', what: 'Open-source bi-encoders (E5, BGE, GTE)', url: 'https://www.sbert.net/' },
+      { name: 'Ollama', what: 'Run embedding models locally (nomic-embed, mxbai)', url: 'https://ollama.com/' },
+    ],
     distinctions: [
       {
         title: 'Incremental vs. full re-embedding',
@@ -687,15 +731,19 @@ export const offlineStages: Stage[] = [
     ],
     concepts: [
       {
-        id: 'emb-asymmetry',
-        label: 'Symmetric vs. asymmetric',
+        id: 'emb-asymmetric',
+        label: 'Asymmetric retrieval',
         kind: 'idea',
-        summary: 'What the two sides of the comparison look like',
+        summary: 'Queries and passages are not the same kind of text',
         detail: [
-          'Embedding tasks divide by whether the two things being compared are the same kind of text. In a symmetric task they are: sentence against sentence, question against question, paragraph against paragraph. Semantic textual similarity, near-duplicate detection and clustering are all symmetric. In an asymmetric task they are not: a short interrogative on one side, a long declarative passage on the other.',
-          'RAG retrieval is asymmetric, and this is the single most common mismatch in a first RAG build. A model tuned for sentence similarity is measuring "do these two sentences mean the same thing", which is not the question being asked. The question being asked is "does this passage answer this query", and a passage that answers a question rarely resembles it.',
-          'The gap is structural rather than a matter of vocabulary. "How do I reset my password?" and a paragraph explaining the reset procedure share few tokens and have different length, register and grammatical mood. A symmetric objective pushes them apart because they are, as sentences, dissimilar.',
-          'Three ways this gets handled. Train asymmetrically, using query and passage pairs so the objective matches the task. Mark the sides explicitly with instruction prefixes so one encoder can serve both roles. Or change the shape of the input at query time, which is what HyDE does by writing a passage-shaped hypothetical, and what doc2query does from the other end by attaching generated questions to each chunk.',
+          'Embedding tasks divide by whether the two things being compared are the same kind of text:',
+          '- **Symmetric tasks** compare like with like: sentence against sentence, or question against question (e.g. semantic cache, near-duplicate detection).',
+          '- **Asymmetric tasks** do not: a short interrogative on one side, a long declarative passage on the other.',
+          '**RAG retrieval is asymmetric**, and this is the single most common mismatch. A model tuned for sentence similarity is measuring "do these two sentences mean the same thing". The question being asked is "does this passage answer this query".',
+          'Three ways this gets handled:',
+          '1. **Train asymmetrically**, using query and passage pairs so the objective matches the task.',
+          '2. **Mark the sides explicitly** with instruction prefixes so one encoder can serve both roles.',
+          '3. **Change the shape of the input** at query time, which is what HyDE does by writing a passage-shaped hypothetical, and what doc2query does from the other end by attaching generated questions to each chunk.',
         ],
         math: [
           {
@@ -728,8 +776,11 @@ export const offlineStages: Stage[] = [
             kind: 'pitfall',
             summary: 'Silent recall loss, no error anywhere',
             detail: [
-              'Models in the E5 and BGE families expect "query: " on the query side and "passage: " on the document side; newer instruction-tuned models take a natural-language task description instead. Whatever the convention, it was present during training and the representation shifts with it.',
-              'Every failure mode here is silent. Omitting the prefixes gives degraded but plausible results. Applying "query: " to both sides gives degraded but plausible results. Indexing with one convention and querying with another gives degraded but plausible results. Nothing errors, and the numbers only look wrong if you were measuring recall against a golden set.',
+              'Models in the E5 and BGE families expect `"query: "` on the query side and `"passage: "` on the document side; newer instruction-tuned models take a natural-language task description instead. Whatever the convention, it was present during training and the representation shifts with it.',
+              '**Every failure mode here is silent:**',
+              '- Omitting the prefixes gives degraded but plausible results.',
+              '- Applying `"query: "` to both sides gives degraded but plausible results.',
+              '- Indexing with one convention and querying with another gives degraded but plausible results.',
               'Assert it in code rather than trusting a convention, and store the prefix convention alongside the model id in the artifact manifest so a mismatch is detectable rather than merely suspected.',
             ],
           },
@@ -739,8 +790,11 @@ export const offlineStages: Stage[] = [
             kind: 'method',
             summary: 'Not every embedding in the system is for retrieval',
             detail: [
-              'Several stages here compare like with like, and those are genuinely symmetric. Semantic chunking compares neighbouring paragraphs. Deduplication compares chunk against chunk. A semantic cache compares an incoming query against stored queries.',
-              'Using an asymmetric retrieval model for those is a mild mismatch in the other direction, though usually a tolerable one. The case worth being deliberate about is the semantic cache, where the comparison is query against query and the threshold is doing safety-critical work, so a model that is actually good at sentence similarity is the right choice.',
+              'Several stages here compare like with like, and those are genuinely symmetric:',
+              '- **Semantic chunking** compares neighbouring paragraphs.',
+              '- **Deduplication** compares chunk against chunk.',
+              '- **Semantic cache** compares an incoming query against stored queries.',
+              'Using an asymmetric retrieval model for those is a mild mismatch in the other direction. The case worth being deliberate about is the semantic cache, where the threshold is doing safety-critical work, so a model that is actually good at sentence similarity is the right choice.',
             ],
           },
         ],
@@ -751,7 +805,7 @@ export const offlineStages: Stage[] = [
         kind: 'tradeoff',
         summary: 'More dimensions, more cost, diminishing returns',
         detail: [
-          'Retrieval quality rises with dimension but flattens quickly, while memory and search cost rise linearly forever. Doubling from 768 to 1536 rarely doubles anything except the bill.',
+          'Retrieval quality rises with dimension but flattens quickly, while **memory and search cost rise linearly forever**. Doubling from 768 to 1536 rarely doubles anything except the bill.',
           'The question is normally settled at model-selection time, because truncating an ordinary embedding destroys it. Matryoshka training changes that, and turns dimension into a runtime dial.',
         ],
         math: [
@@ -879,6 +933,12 @@ export const offlineStages: Stage[] = [
         tex: String.raw`\text{recall}_{\text{ANN}} = \frac{|\text{ANN top-}K \cap \text{exact top-}K|}{K}`,
         note: 'Measured against brute-force ground truth on a sample. This is the number every ANN parameter trades against latency, and it is distinct from the retrieval recall you measure against human relevance labels.',
       },
+    ],
+    stack: [
+      { name: 'FAISS', what: 'Meta\'s library for efficient similarity search (Flat, IVF, HNSW, PQ)', url: 'https://github.com/facebookresearch/faiss' },
+      { name: 'Annoy', what: 'Spotify\'s approximate NN with random projection trees', url: 'https://github.com/spotify/annoy' },
+      { name: 'ScaNN', what: 'Google\'s ANN with learned quantisation', url: 'https://github.com/google-research/google-research/tree/master/scann' },
+      { name: 'hnswlib', what: 'Lightweight, header-only C++ HNSW implementation', url: 'https://github.com/nmslib/hnswlib' },
     ],
     variants: [
       {
@@ -1310,6 +1370,16 @@ export const offlineStages: Stage[] = [
     detail: [
       'The finished artifact: a structure plus a storage format, holding every chunk vector and its metadata.',
       'This is the one thing the two halves of the system share. Everything above writes it; everything below reads it. It is also the only stage that is a persistent, stateful object rather than a transformation, which is why versioning it matters.',
+    ],
+    stack: [
+      { name: 'Pinecone', what: 'Managed vector DB, serverless, scales automatically', url: 'https://www.pinecone.io/' },
+      { name: 'Milvus', what: 'Open-source, distributed, supports IVF/HNSW/PQ natively', url: 'https://milvus.io/' },
+      { name: 'Weaviate', what: 'Open-source vector DB with built-in vectorizers', url: 'https://weaviate.io/' },
+      { name: 'Qdrant', what: 'High-performance vector DB with rich filtering', url: 'https://qdrant.tech/' },
+      { name: 'ChromaDB', what: 'Lightweight, in-process embedding DB for prototyping', url: 'https://www.trychroma.com/' },
+      { name: 'LanceDB', what: 'Serverless, built on Lance columnar format', url: 'https://lancedb.com/' },
+      { name: 'pgvector', what: 'PostgreSQL extension for vector similarity search', url: 'https://github.com/pgvector/pgvector' },
+      { name: 'FAISS', what: 'In-memory index library, often the engine inside managed DBs', url: 'https://github.com/facebookresearch/faiss' },
     ],
     concepts: [
       {

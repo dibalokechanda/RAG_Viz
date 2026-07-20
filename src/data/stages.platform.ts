@@ -19,9 +19,13 @@ export const platformStages: Stage[] = [
     tagline: 'What causes new content to enter the corpus',
     governs: ['loading', 'embedding', 'index'],
     detail: [
-      'A corpus is not a snapshot; it is a stream. Something has to decide when new material enters, when changed material is refreshed, and, most easily forgotten, when deleted material leaves.',
-      'Four common triggers, in ascending order of freshness and complexity. A scheduled crawl re-walks the sources on a timer: simple, and stale by up to one interval. A webhook fires when the source system says something changed: near-real-time, but you inherit its reliability. Change data capture tails a database log: exact and ordered, but only works for databases. Manual upload covers the long tail of documents nobody automated.',
-      'The deletion path is the one that bites. If a source document is removed and nothing removes its chunks, they stay in the index and keep being retrieved, confidently citing a document that no longer exists. Deletions must propagate as tombstones, and a periodic reconciliation sweep should catch what the event stream dropped.',
+      'A corpus is not a snapshot; it is a stream. Something has to decide when new material enters, when changed material is refreshed, and when deleted material leaves.',
+      '**Four common triggers**, in ascending order of freshness and complexity:',
+      '- **Scheduled crawl**: re-walks the sources on a timer. Simple, but stale by up to one interval.',
+      '- **Webhook**: fires when the source system says something changed. Near-real-time, but you inherit its reliability.',
+      '- **Change data capture (CDC)**: tails a database log. Exact and ordered, but only works for databases.',
+      '- **Manual upload**: covers the long tail of documents nobody automated.',
+      '**The deletion path is the one that bites.** If a source document is removed and nothing removes its chunks, they stay in the index and keep being retrieved, confidently citing a document that no longer exists. Deletions must propagate as tombstones.',
     ],
     math: [
       {
@@ -88,8 +92,10 @@ export const platformStages: Stage[] = [
         kind: 'pitfall',
         summary: 'Removed sources keep being retrieved',
         detail: [
-          'This is the highest-severity failure in the whole ingestion path, because it is silent and it produces confident, well-cited answers from content that was deliberately withdrawn, a retracted policy, an offboarded employee’s document, a deleted record someone exercised a right to erase.',
-          'Handle it in two layers. Propagate deletes as explicit events so the common case is fast, and run a periodic reconciliation that diffs the set of source ids against the set of indexed ids and removes orphans. The event stream will drop things; the sweep is what makes it correct rather than merely usually correct.',
+          'This is the highest-severity failure in the whole ingestion path, because it is silent and produces confident, well-cited answers from content that was deliberately withdrawn (e.g. a retracted policy, an offboarded employee’s document).',
+          '**Handle it in two layers:**',
+          '- Propagate deletes as explicit events so the common case is fast.',
+          '- Run a periodic reconciliation that diffs the set of source ids against the set of indexed ids and removes orphans.',
         ],
       },
       {
@@ -115,10 +121,12 @@ export const platformStages: Stage[] = [
     tagline: 'Who may see which chunk, enforced, not assumed',
     governs: ['metadata', 'retrieval', 'postprocess'],
     detail: [
-      'Retrieval respects the index, not your authorisation model. Nothing about a vector search knows that this user may not read that document, so unless permissions are captured at ingest and enforced at query time, the system will happily surface restricted content, fluently, and with a citation.',
-      'Permissions have to be captured during ingestion, because that is when they exist. Carry the source ACL onto every chunk as metadata, alongside tenant, classification and retention fields. A chunk whose ACL was not captured cannot be safely served to anyone.',
-      'Enforcement then happens as a filter on retrieval, and the choice between pre- and post-filtering is a correctness decision as much as a performance one. Post-filtering retrieves top-K and discards what the user cannot see, simple, but a selective filter can leave you with almost nothing. Pre-filtering restricts the search space first, which preserves K but degrades ANN structures badly when most of the graph is masked out.',
-      'The last line of defence belongs at post-processing: re-check that every chunk actually cited is one this user may see. Defence in depth, because the retrieval filter is exactly the kind of thing that breaks silently during a refactor.',
+      '**Retrieval respects the index, not your authorisation model.** Nothing about a vector search knows that this user may not read that document. Unless permissions are captured at ingest and enforced at query time, the system will happily surface restricted content.',
+      '**Permissions have to be captured during ingestion**, because that is when they exist. Carry the source ACL onto every chunk as metadata, alongside tenant, classification and retention fields.',
+      '**Enforcement happens as a filter on retrieval:**',
+      '- **Post-filtering** retrieves top-K and discards what the user cannot see. Simple, but a selective filter can leave you with almost nothing.',
+      '- **Pre-filtering** restricts the search space first, which preserves K but degrades ANN structures badly when most of the graph is masked out.',
+      '**The last line of defence** belongs at post-processing: re-check that every chunk actually cited is one this user may see. Defence in depth.',
     ],
     math: [
       {
@@ -399,6 +407,11 @@ export const platformStages: Stage[] = [
       'Both must be set above the noise floor of the golden set. A gate that fires on differences smaller than the minimum detectable effect will block good changes at random, and a gate that blocks at random is a gate that gets disabled.',
       'What the gate protects is subtle: not the code, which tests already cover, but the *interaction* between artifacts. A prompt that was fine with the old reranker, a chunk size that was fine with the old embedder; these are the regressions unit tests cannot see.',
     ],
+    stack: [
+      { name: 'GitHub Actions', what: 'CI/CD workflows for automated evaluation runs', url: 'https://github.com/features/actions' },
+      { name: 'Braintrust', what: 'Eval and prompt playground with CI integration', url: 'https://www.braintrust.dev/' },
+      { name: 'Promptfoo', what: 'CLI tool for LLM prompt testing and evaluation', url: 'https://www.promptfoo.dev/' },
+    ],
     math: [
       {
         title: 'Promotion rule',
@@ -534,6 +547,14 @@ export const platformStages: Stage[] = [
       'The thing that makes RAG hard to observe is that the failure is usually silent. A 200 response with a fluent, well-cited, wrong answer looks exactly like a good one in every conventional metric. So the useful signals are not error rates but distributions: retrieval scores, abstention rate, degradation level, citation coverage.',
       'Instrument per stage, not per request. A single end-to-end latency number tells you the system got slower; a span per stage tells you the reranker did. The same applies to quality, retrieval and generation have to be observable separately for the same reason they are evaluated separately.',
       'The retrieval log is the highest-value artifact here and doubles as the access-audit trail: which chunks were shown, to whom, with what scores. It is also what makes a user-reported bad answer diagnosable at all, because it tells you whether the evidence was even present.',
+    ],
+    stack: [
+      { name: 'LangSmith', what: 'Tracing, monitoring, and evaluation for LangChain apps', url: 'https://smith.langchain.com/' },
+      { name: 'LangFuse', what: 'Open-source LLM observability and tracing', url: 'https://langfuse.com/' },
+      { name: 'Phoenix (Arize)', what: 'LLM traces, evals, and experiment tracking', url: 'https://phoenix.arize.com/' },
+      { name: 'Weights & Biases', what: 'Experiment tracking and prompt logging', url: 'https://wandb.ai/' },
+      { name: 'OpenLLMetry', what: 'OpenTelemetry-based instrumentation for LLM apps', url: 'https://github.com/traceloop/openllmetry' },
+      { name: 'Helicone', what: 'LLM proxy with cost tracking and caching', url: 'https://www.helicone.ai/' },
     ],
     math: [
       {

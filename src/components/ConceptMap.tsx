@@ -10,10 +10,11 @@ import {
   type Node,
   type NodeProps,
 } from '@xyflow/react'
-import type { Concept, Stage } from '../data/types'
+import type { Concept, Stage, StackItem } from '../data/types'
 import MathBlockView from './Math'
 import FigureView from './Figure'
 import Icon, { type IconName } from './Icon'
+import ReactMarkdown from 'react-markdown'
 
 /*
  * Radial layout, sized from the cards rather than from magic angles.
@@ -188,9 +189,32 @@ function ConceptDetail({ concept }: { concept: Concept | null }) {
       <h3>{concept.label}</h3>
       <div className="cm-detail-sum">{concept.summary}</div>
 
-      {concept.detail?.map((p, i) => (
-        <p key={i}>{p}</p>
-      ))}
+      {concept.detail && concept.detail.length > 0 && (
+        <div className="markdown-content">
+          <ReactMarkdown>{concept.detail.join('\n\n')}</ReactMarkdown>
+        </div>
+      )}
+
+      {concept.stack && concept.stack.length > 0 && (
+        <div className="tradeoffs" style={{ marginTop: 14 }}>
+          <div className="sub-label" style={{ marginBottom: 8 }}>Tech stack</div>
+          <div className="stack-list">
+            {concept.stack.map((s: StackItem) => (
+              <a
+                key={s.name}
+                className="stack-item"
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <b>{s.name}</b>
+                <span>{s.what}</span>
+                {s.url && <span className="stack-arrow">↗</span>}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {concept.figures?.map((f, i) => (
         <FigureView figure={f} key={i} />

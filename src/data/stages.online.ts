@@ -31,7 +31,7 @@ export const onlineStages: Stage[] = [
     ordinal: '1a',
     tagline: 'What does the user actually want?',
     detail: [
-      'Turn free text into a structured object the rest of the pipeline can branch on: intent, domain, entities, constraints, missing context, ambiguity.',
+      'Turn free text into a structured object the rest of the pipeline can branch on: **intent**, **domain**, **entities**, **constraints**, **missing context**, and **ambiguity**.',
       'The output is typically a JSON-like record, produced by classical NLP, a small classifier, or an LLM, in ascending order of cost and capability.',
     ],
     example: {
@@ -108,8 +108,8 @@ export const onlineStages: Stage[] = [
     ordinal: '1b',
     tagline: 'Which retrieval strategy fits?',
     detail: [
-      'A routing decision, not a plan. Dense, sparse, hybrid, SQL, plain keyword search, pick the machinery that suits this class of question.',
-      'In vanilla RAG this is a single branch evaluated once. It is emphatically not an agent deliberating over a strategy; that is a different architecture.',
+      '* **A routing decision, not a plan:** Dense, sparse, hybrid, SQL, plain keyword search, pick the machinery that suits this class of question.',
+      '* **Not an agent:** In vanilla RAG this is a single branch evaluated once. It is emphatically not an agent deliberating over a strategy; that is a different architecture.',
     ],
     example: {
       beforeLabel: 'Possible routes',
@@ -125,9 +125,9 @@ export const onlineStages: Stage[] = [
         kind: 'method',
         summary: 'What actually predicts the right route',
         detail: [
-          'Rare exact tokens, error codes, part numbers, function names, identifiers, argue for sparse. Dense retrieval is weakest precisely where a token appears a handful of times in the corpus, because a rare term contributes little to a pooled embedding.',
-          'Conceptual or paraphrase-heavy questions argue for dense. Aggregations ("how many", "average") argue for SQL against a real database, since no amount of chunk retrieval will let an LLM count reliably.',
-          'When the signals conflict, and in a question naming two products while asking a conceptual comparison; they do, hybrid is the answer, which is why hybrid is the sane default.',
+          '**Rare exact tokens**, error codes, part numbers, function names, identifiers, argue for sparse. Dense retrieval is weakest precisely where a token appears a handful of times in the corpus, because a rare term contributes little to a pooled embedding.',
+          '**Conceptual or paraphrase-heavy questions** argue for dense. Aggregations ("how many", "average") argue for SQL against a real database, since no amount of chunk retrieval will let an LLM count reliably.',
+          '**When the signals conflict**, and in a question naming two products while asking a conceptual comparison they often do, hybrid is the answer, which is why hybrid is the sane default.',
         ],
       },
       {
@@ -622,6 +622,11 @@ export const onlineStages: Stage[] = [
       'The embedding cache maps text to vector. It is keyed on the normalised text plus the embedding model version, and it never goes stale for a given model, so it is pure profit. The retrieval cache maps a query to the chunk ids it returned; it is invalidated by any change to the index. The answer cache maps a query to the finished response, and is invalidated by the index, the prompt, and the generation model. Provider-side prompt caching is different again: it caches the attention state of a shared prefix, so it rewards putting the stable part of the prompt first.',
       'The semantic part is what makes the answer cache interesting. Instead of requiring an exact string match, embed the incoming query and look for a stored query within some cosine distance. "How do I reset my password" then hits the entry stored for "password reset steps". That is also exactly where it becomes dangerous, because the threshold is now deciding whether two questions mean the same thing.',
     ],
+    stack: [
+      { name: 'Redis', what: 'In-memory key-value store, widely used for fast caching', url: 'https://redis.io/' },
+      { name: 'GPTCache', what: 'Purpose-built semantic cache for LLM responses', url: 'https://github.com/zilliztech/GPTCache' },
+      { name: 'Momento', what: 'Serverless caching with vector search support', url: 'https://www.gomomento.com/' },
+    ],
     math: [
       {
         title: 'What a cache actually saves',
@@ -802,6 +807,12 @@ export const onlineStages: Stage[] = [
     detail: [
       'Search the index and return the best K chunks. This is a recall stage, not a precision stage, its job is to make sure the right chunk is somewhere in the candidate set, and let reranking sort out the order.',
       'That framing determines how K is chosen. K here should be generous, because a chunk that is not retrieved can never be recovered by any downstream stage. Precision is someone else’s job.',
+    ],
+    stack: [
+      { name: 'LangChain', what: 'Retriever abstractions for vector, BM25, and hybrid search', url: 'https://python.langchain.com/docs/how_to/#retrievers' },
+      { name: 'LlamaIndex', what: 'Query engine with built-in retrieval and reranking', url: 'https://docs.llamaindex.ai/en/stable/module_guides/querying/' },
+      { name: 'Elasticsearch', what: 'BM25 and hybrid vector+keyword search', url: 'https://www.elastic.co/elasticsearch' },
+      { name: 'Vespa', what: 'Real-time serving engine with hybrid dense+sparse retrieval', url: 'https://vespa.ai/' },
     ],
     math: [
       {
@@ -1422,6 +1433,13 @@ export const onlineStages: Stage[] = [
       'Retrieval used a bi-encoder: query and document were embedded separately, and never met. That is what makes it fast, the document vectors were computed offline, but the model never got to read them together.',
       'A cross-encoder takes the pair as a single input and lets attention run across both, producing a far better relevance score. The price is that nothing can be precomputed: every (query, document) pair is a fresh forward pass.',
       'So it runs only over the top candidates from retrieval. Retrieve broadly and cheaply, then rerank narrowly and expensively.',
+    ],
+    stack: [
+      { name: 'Cohere Rerank', what: 'Managed cross-encoder reranking API', url: 'https://cohere.com/rerank' },
+      { name: 'Jina Reranker', what: 'Lightweight, fast cross-encoder models', url: 'https://jina.ai/reranker/' },
+      { name: 'BAAI/bge-reranker', what: 'Open-source cross-encoder rerankers', url: 'https://huggingface.co/BAAI/bge-reranker-v2-m3' },
+      { name: 'FlashRank', what: 'Ultra-lightweight reranking library', url: 'https://github.com/PrithivirajDamodaran/FlashRank' },
+      { name: 'Voyage Rerank', what: 'Reranking API by Voyage AI', url: 'https://www.voyageai.com/' },
     ],
     figures: [
       {
@@ -2089,6 +2107,12 @@ export const onlineStages: Stage[] = [
       'Assemble the final prompt: system prompt, retrieved context, the user question, and formatting instructions.',
       'Ordering and labelling are not cosmetic. Clearly delimited chunks with stable identifiers are what make citation possible downstream, and position within the context window measurably affects what the model attends to.',
     ],
+    stack: [
+      { name: 'LangChain', what: 'PromptTemplate and ChatPromptTemplate', url: 'https://python.langchain.com/docs/concepts/prompt_templates/' },
+      { name: 'LlamaIndex', what: 'Response synthesizers and prompt abstractions', url: 'https://docs.llamaindex.ai/en/stable/module_guides/querying/response_synthesizers/' },
+      { name: 'Guidance', what: 'Constrained generation with template control', url: 'https://github.com/guidance-ai/guidance' },
+      { name: 'Jinja2', what: 'Python templating engine for prompt assembly', url: 'https://jinja.palletsprojects.com/' },
+    ],
     math: [
       {
         title: 'Context budget',
@@ -2210,6 +2234,15 @@ export const onlineStages: Stage[] = [
       'Sampling, temperature, top-K, top-P, shapes the probability distribution and governs how the next single token is chosen from it.',
       'Decoding, greedy, beam search, is the strategy for building the whole output sequence. Greedy commits to the best token at each step; beam search keeps several candidate sequences alive and picks the best complete one.',
       'Speculative decoding is neither: it is an inference optimisation where a small draft model proposes tokens that the large model verifies in a batch. Same output distribution, less wall-clock time.',
+    ],
+    stack: [
+      { name: 'OpenAI', what: 'GPT-4o, GPT-4.1, o3-pro', url: 'https://platform.openai.com/docs/models' },
+      { name: 'Anthropic', what: 'Claude 4 / Opus 4 / Sonnet 4', url: 'https://www.anthropic.com/' },
+      { name: 'Google', what: 'Gemini 2.5 Pro / Flash', url: 'https://ai.google.dev/' },
+      { name: 'Mistral', what: 'Mistral Large, open-weight models', url: 'https://mistral.ai/' },
+      { name: 'Ollama', what: 'Run open models locally (Llama 3, Phi, Qwen)', url: 'https://ollama.com/' },
+      { name: 'vLLM', what: 'High-throughput serving engine for open models', url: 'https://github.com/vllm-project/vllm' },
+      { name: 'Together AI', what: 'Serverless inference for open-source LLMs', url: 'https://www.together.ai/' },
     ],
     math: [
       {
@@ -2444,6 +2477,12 @@ export const onlineStages: Stage[] = [
       'Score the response before it ships. This is the generation-side counterpart to the retrieval metrics earlier: those asked whether the right evidence was found, these ask whether the answer actually used it.',
       'Four dimensions. Grounding and faithfulness ask whether the answer is supported by the retrieved context. Relevance asks whether it addresses the question. Completeness asks whether anything was left out.',
       'Faithfulness is the one that matters most, because an answer can be fluent, relevant and complete while being entirely unsupported by anything you retrieved, and that failure is invisible to every other check.',
+    ],
+    stack: [
+      { name: 'Ragas', what: 'RAG evaluation framework (faithfulness, relevance, context)', url: 'https://docs.ragas.io/' },
+      { name: 'DeepEval', what: 'LLM-as-judge evaluation with 14+ metrics', url: 'https://docs.confident-ai.com/' },
+      { name: 'TruLens', what: 'Evaluation and tracing for LLM apps', url: 'https://www.trulens.org/' },
+      { name: 'Phoenix (Arize)', what: 'LLM observability with eval traces', url: 'https://phoenix.arize.com/' },
     ],
     math: [
       {

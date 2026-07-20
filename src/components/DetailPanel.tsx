@@ -1,9 +1,10 @@
-import type { Example, Stage, Tradeoffs, TraceFrame } from '../data/types'
+import type { Example, Stage, StackItem, Tradeoffs, TraceFrame } from '../data/types'
 import { usePipeline } from '../PipelineContext'
 import MathBlockView from './Math'
 import FigureView from './Figure'
 import Section from './Section'
 import Icon from './Icon'
+import ReactMarkdown from 'react-markdown'
 
 function ExampleBlock({ example }: { example: Example }) {
   const cls = `example-text${example.mono ? ' mono' : ''}`
@@ -124,10 +125,32 @@ export default function DetailPanel({ stage, variantId, trace, onOpenMap }: Prop
         {trace && <TraceBlock trace={trace.frame} step={trace.step} total={trace.total} />}
 
         <Section index={next()} title="Overview" defaultOpen>
-          {stage.detail.map((p, i) => (
-            <p key={i}>{p}</p>
-          ))}
+          {stage.detail && stage.detail.length > 0 && (
+            <div className="markdown-content">
+              <ReactMarkdown>{stage.detail.join('\n\n')}</ReactMarkdown>
+            </div>
+          )}
         </Section>
+
+        {stage.stack && stage.stack.length > 0 && (
+          <Section index={next()} title="Tech stack" count={stage.stack.length} defaultOpen>
+            <div className="stack-list">
+              {stage.stack.map((s: StackItem) => (
+                <a
+                  key={s.name}
+                  className="stack-item"
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <b>{s.name}</b>
+                  <span>{s.what}</span>
+                  {s.url && <span className="stack-arrow">↗</span>}
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
 
         {stage.figures && (
           <Section index={next()} title="Illustrated" count={stage.figures.length} defaultOpen>

@@ -178,6 +178,8 @@ export interface Concept {
   example?: Example
   tradeoffs?: Tradeoffs
   children?: Concept[]
+  /** Tools and libraries commonly used for this concept. */
+  stack?: StackItem[]
 }
 
 /** One frame of the animated query walkthrough. */
@@ -224,6 +226,8 @@ export interface Stage {
   governs?: string[]
   /** Root concepts for this stage's mind-map. */
   concepts?: Concept[]
+  /** Tools and libraries commonly used at this stage. */
+  stack?: StackItem[]
   /** Frame shown when the animated query passes through this stage. */
   trace?: TraceFrame
 }
