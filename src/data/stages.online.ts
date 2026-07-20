@@ -2722,6 +2722,9 @@ scores = evaluate(dataset, metrics=[faithfulness, answer_relevancy])`,
       { name: 'TruLens', what: 'Evaluation and tracing for LLM apps', url: 'https://www.trulens.org/' },
       { name: 'Phoenix (Arize)', what: 'LLM observability with eval traces', url: 'https://phoenix.arize.com/' },
       { name: 'Open RAG Eval', what: 'Comprehensive open-source RAG evaluation by Vectara', url: 'https://github.com/vectara/open-rag-eval' },
+      { name: 'UpTrain', what: 'Open-source LLM evaluation tool with predefined metrics', url: 'https://github.com/uptrain-ai/uptrain' },
+      { name: 'Giskard', what: 'Testing and evaluation framework for LLMs and ML models', url: 'https://github.com/Giskard-AI/giskard' },
+      { name: 'ARES', what: 'Automated RAG Evaluation System with few-shot judges', url: 'https://github.com/stanford-futuredata/ARES' },
     ],
     math: [
       {
