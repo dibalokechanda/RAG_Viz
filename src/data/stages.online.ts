@@ -2687,8 +2687,11 @@ scores = evaluate(dataset, metrics=[faithfulness, answer_relevancy])`,
     ],
     detail: [
       'Score the response before it ships. This is the generation-side counterpart to the retrieval metrics earlier: those asked whether the right evidence was found, these ask whether the answer actually used it.',
-      'Four dimensions. Grounding and faithfulness ask whether the answer is supported by the retrieved context. Relevance asks whether it addresses the question. Completeness asks whether anything was left out.',
-      'Faithfulness is the one that matters most, because an answer can be fluent, relevant and complete while being entirely unsupported by anything you retrieved, and that failure is invisible to every other check.',
+      '**Four dimensions of evaluation:**',
+      '- **Grounding and faithfulness:** Is the answer supported by the retrieved context?',
+      '- **Relevance:** Does the answer address the user\'s question?',
+      '- **Completeness:** Was anything left out of the answer?',
+      '**Faithfulness matters most.** An answer can be fluent, relevant, and complete while being entirely unsupported by anything you retrieved. That specific failure is invisible to every other check.',
     ],
     stack: [
       { name: 'Ragas', what: 'RAG evaluation framework (faithfulness, relevance, context)', url: 'https://docs.ragas.io/' },
@@ -2738,7 +2741,10 @@ scores = evaluate(dataset, metrics=[faithfulness, answer_relevancy])`,
         summary: 'And where it is unreliable',
         detail: [
           'Give a model the query, the context and the answer, and ask it to score each dimension with a justification. It correlates reasonably with human judgement and costs a fraction of the price.',
-          'Its biases are well documented and worth designing around. Position bias: in pairwise comparisons the first option wins more often, so randomise order. Verbosity bias: longer answers score higher regardless of quality. Self-preference: models rate their own generations above others, so the judge should ideally be a different model from the generator.',
+          '**Its biases are well documented and worth designing around:**',
+          '- **Position bias:** In pairwise comparisons, the first option wins more often. Randomise order.',
+          '- **Verbosity bias:** Longer answers score higher regardless of quality.',
+          '- **Self-preference:** Models rate their own generations above others. The judge should ideally be a different model from the generator.',
         ],
         children: [
           {
