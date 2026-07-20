@@ -287,6 +287,19 @@ export const onlineStages: Stage[] = [
     kind: 'fanout',
     ordinal: '1e',
     tagline: 'One question becomes several searches',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain.retrievers import MultiQueryRetriever
+from langchain_openai import ChatOpenAI
+
+retriever = MultiQueryRetriever.from_llm(
+    retriever=store.as_retriever(search_kwargs={"k": 10}),
+    llm=ChatOpenAI(model="gpt-4o-mini", temperature=0),
+)  # generates several query variants, retrieves each, unions the results`,
+      },
+    ],
     detail: [
       'Rather than searching once, generate several semantically distinct queries covering different facets of the question. Each retrieves independently, and the result sets are merged before reranking.',
       '**When to use:** It helps most when one phrasing simply cannot reach all the relevant material (e.g. a broad question whose answer is scattered across sub-topics).',
@@ -384,7 +397,7 @@ export const onlineStages: Stage[] = [
         summary: 'Four paraphrases retrieve one result set',
         detail: [
           'If the generated variants are near-paraphrases, they retrieve nearly identical chunks and you have paid 4× for nothing. The value comes entirely from variants that reach *different* regions of the corpus.',
-          '**Best Practice:** Prompt for facets, not rewordings (e.g. mechanism, comparison, failure modes). Then measure the pairwise Jaccard overlap of the retrieved sets—if it is high, the step is not earning its cost.',
+          '**Best Practice:** Prompt for facets, not rewordings (e.g. mechanism, comparison, failure modes). Then measure the pairwise Jaccard overlap of the retrieved sets; if it is high, the step is not earning its cost.',
         ],
         math: [
           {
@@ -421,6 +434,22 @@ export const onlineStages: Stage[] = [
     kind: 'fanout',
     ordinal: '1f',
     tagline: 'Break a compound question apart',
+    code: [
+      {
+        title: 'LangGraph',
+        language: 'python',
+        code: `from langgraph.graph import StateGraph, END
+
+# Independent sub-questions retrieve in parallel, then a node synthesises.
+g = StateGraph(State)
+g.add_node("decompose", split_into_subquestions)
+g.add_node("retrieve", retrieve_each_subquestion)   # fan-out
+g.add_node("synthesize", combine_answers)
+g.add_edge("decompose", "retrieve")
+g.add_edge("retrieve", "synthesize"); g.add_edge("synthesize", END)`,
+        note: 'LangGraph is the right tool once sub-questions are dependent, i.e. one must be answered before the next can be asked, which is where vanilla RAG ends.',
+      },
+    ],
     detail: [
       'Only worth doing for genuinely compound questions. Split into independent sub-questions, retrieve for each, then combine the answers at the end.',
       'The tell is a question containing several questions, "compare X, Y and Z" is three retrievals wearing a trenchcoat.',
@@ -491,6 +520,20 @@ export const onlineStages: Stage[] = [
     kind: 'optional',
     ordinal: '1g',
     tagline: 'Embed a hypothetical answer, not the question',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain.chains import HypotheticalDocumentEmbedder
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+# Embeds an LLM-written hypothetical answer instead of the question.
+hyde = HypotheticalDocumentEmbedder.from_llm(
+    ChatOpenAI(temperature=0), OpenAIEmbeddings(), prompt_key="web_search")
+store = Chroma(embedding_function=hyde, persist_directory="./idx")`,
+        note: 'The generated document is used only for its embedding and then discarded; its factual accuracy does not matter.',
+      },
+    ],
     detail: [
       'Hypothetical Document Embedding. Have the LLM write a plausible answer to the question first, then embed that instead of the question itself.',
       'The intuition is a shape mismatch: your index is full of explanatory paragraphs, but a query is a short interrogative. A written-out paragraph sits closer to real documents in embedding space than the question does.',
@@ -616,6 +659,22 @@ export const onlineStages: Stage[] = [
     kind: 'optional',
     ordinal: '6a',
     tagline: 'Answer it without touching the retriever',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain.globals import set_llm_cache
+from langchain_community.cache import RedisSemanticCache
+from langchain_openai import OpenAIEmbeddings
+
+set_llm_cache(RedisSemanticCache(
+    redis_url="redis://localhost:6379",
+    embedding=OpenAIEmbeddings(),
+    score_threshold=0.05,   # cosine DISTANCE; smaller = stricter match
+))`,
+        note: 'The threshold is the safety dial: too loose and it answers a different question. Key entries on ACL scope, not user id, or answers leak across users.',
+      },
+    ],
     detail: [
       'Real query distributions are heavily skewed. A small set of questions accounts for a large share of traffic, which means a large share of requests are re-deriving an answer the system has already produced. Caching is usually the cheapest latency and cost win available.',
       'There are four distinct caches, and they are worth keeping separate because they invalidate on different things.',
@@ -804,6 +863,19 @@ export const onlineStages: Stage[] = [
     kind: 'choice',
     ordinal: '6',
     tagline: 'Pull the top-K candidate chunks',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `# Dense: embed the query, ANN search, take the top K.
+retriever = store.as_retriever(
+    search_type="mmr",                     # optional diversity-aware selection
+    search_kwargs={"k": 50, "fetch_k": 200},
+)
+docs = retriever.invoke("How is FAISS different from HNSW?")`,
+        note: 'k here is the candidate pool a reranker will sort, not the number of chunks the model sees. Retrieve wide, rerank narrow.',
+      },
+    ],
     detail: [
       'Search the index and return the best K chunks. This is a recall stage, not a precision stage, its job is to make sure the right chunk is somewhere in the candidate set, and let reranking sort out the order.',
       'That framing determines how K is chosen. K here should be generous, because a chunk that is not retrieved can never be recovered by any downstream stage. Precision is someone else’s job.',
@@ -1049,6 +1121,21 @@ export const onlineStages: Stage[] = [
     kind: 'sequential',
     ordinal: '6',
     tagline: 'Merge ranked lists, not scores',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain.retrievers import EnsembleRetriever
+from langchain_community.retrievers import BM25Retriever
+
+sparse = BM25Retriever.from_documents(chunks); sparse.k = 50
+dense  = store.as_retriever(search_kwargs={"k": 50})
+
+# EnsembleRetriever fuses the two ranked lists with Reciprocal Rank Fusion.
+hybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
+        note: 'This is hybrid retrieval and RRF in one object. Fusion is rank-based, so the dense and sparse scores never need to share a scale.',
+      },
+    ],
     detail: [
       'RRF combines rankings, not similarity scores, and that is the entire point. A cosine similarity of 0.82 and a BM25 score of 14.3 are not on the same scale and cannot be meaningfully averaged. Ranks are comparable; raw scores are not.',
       'Each document scores the sum of 1/(k + rank) across the lists it appears in. Appearing high in both lists beats appearing first in only one.',
@@ -1429,6 +1516,22 @@ export const onlineStages: Stage[] = [
     kind: 'optional',
     ordinal: '7',
     tagline: 'Score (query, document) jointly',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import CrossEncoderReranker
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+
+reranker = CrossEncoderReranker(
+    model=HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-base"),
+    top_n=5)   # reruns the top candidates, keeps the best 5
+retriever = ContextualCompressionRetriever(
+    base_compressor=reranker, base_retriever=hybrid)`,
+        note: 'Cohere Rerank and Jina Reranker are hosted alternatives; the wiring is identical, only the model swaps.',
+      },
+    ],
     detail: [
       'Retrieval used a bi-encoder: query and document were embedded separately, and never met. That is what makes it fast, the document vectors were computed offline, but the model never got to read them together.',
       'A cross-encoder takes the pair as a single input and lets attention run across both, producing a far better relevance score. The price is that nothing can be precomputed: every (query, document) pair is a fresh forward pass.',
@@ -1518,11 +1621,15 @@ export const onlineStages: Stage[] = [
         kind: 'method',
         summary: 'Per-token vectors, cheap interaction at query time',
         detail: [
-          'The two architectures above sit at opposite extremes of when the query and the document are allowed to meet. A bi-encoder compresses a whole passage into one vector before it has any idea what will be asked, which is why it is fast and why it loses detail. A cross-encoder defers everything until the query arrives, which is why it is accurate and why nothing can be cached.',
-          'Late interaction takes the middle position. Encode the document once into one vector per token and store all of them. When a query arrives, encode it into per-token vectors too, then score with an operator cheap enough to run at retrieval scale. The interaction happens late, after both sides are encoded independently, but it still happens at token granularity rather than being pre-averaged away.',
-          'ColBERT is the model that made this practical, and MaxSim is its scoring operator: every query token finds its single best match anywhere in the document, and those maxima are summed. The effect is a soft, order-free term-matching signal. A query token about "quantisation" contributes strongly if any part of the passage is about quantisation, which recovers much of what a pooled single vector throws away, and does so without the query needing to use the same words.',
-          'The catch is storage. One vector per token instead of one per chunk is a two-orders-of-magnitude multiplier, and that, rather than compute, is what kept late interaction niche for years. ColBERTv2 is largely a response to it.',
-          'Worth knowing that this is not only a reranker. Because MaxSim can be driven by an ANN index over the token vectors, late interaction can serve as the first-stage retriever itself, replacing the dense bi-encoder rather than sitting behind it.',
+          'The two architectures above sit at opposite extremes of when the query and the document are allowed to meet. **Late interaction takes the middle position:**',
+          '- **Encode the document** once into one vector per token and store all of them.',
+          '- **Encode the query** into per-token vectors at query time.',
+          '- **Score** with an operator cheap enough to run at retrieval scale.',
+          '**ColBERT** is the model that made this practical, using **MaxSim** as its scoring operator. Every query token finds its single best match anywhere in the document, and those maxima are summed. The effect is a soft, order-free term-matching signal.',
+          '**The tradeoffs are clear:**',
+          '- **Quality:** It recovers much of what a pooled single vector throws away, without the query needing to use the same words.',
+          '- **Storage:** One vector per token is a two-orders-of-magnitude multiplier. This kept late interaction niche for years until ColBERTv2.',
+          'Worth knowing that this is **not only a reranker**. Because MaxSim can be driven by an ANN index over the token vectors, late interaction can serve as the first-stage retriever itself.',
         ],
         math: [
           {
@@ -1585,9 +1692,12 @@ export const onlineStages: Stage[] = [
             kind: 'method',
             summary: 'ColBERTv2: centroids plus residuals',
             detail: [
-              'Token vectors are extremely redundant, because the same word in similar contexts lands in nearly the same place. ColBERTv2 exploits that by clustering all token vectors into centroids, then storing each token as a centroid id plus a heavily quantised residual, typically one or two bits per dimension.',
-              'That turns a 512-byte float32 token vector into roughly 20 to 36 bytes, cutting the index by an order of magnitude and bringing it back into the range where late interaction is deployable. The retrieval engine built around it, PLAID, then prunes aggressively by centroid before ever computing a full MaxSim.',
-              'The same shape as PQ, and the same lesson: at scale, the interesting engineering in retrieval is almost always about making vectors smaller without making them useless.',
+              'Token vectors are extremely redundant, because the same word in similar contexts lands in nearly the same place. **ColBERTv2 exploits that:**',
+              '- **Clustering:** All token vectors are clustered into centroids.',
+              '- **Compression:** Each token is stored as a centroid id plus a heavily quantised residual (1-2 bits per dimension).',
+              'That turns a 512-byte float32 token vector into roughly 20 to 36 bytes, cutting the index by an order of magnitude and bringing it back into the deployable range.',
+              'The retrieval engine built around it, **PLAID**, then prunes aggressively by centroid before ever computing a full MaxSim.',
+              '**The lesson:** At scale, the interesting engineering in retrieval is almost always about making vectors smaller without making them useless.',
             ],
             math: [
               {
@@ -1634,6 +1744,19 @@ export const onlineStages: Stage[] = [
     kind: 'optional',
     ordinal: '7b',
     tagline: 'Precision, Recall, MRR, nDCG, measured on the retrieved set',
+    code: [
+      {
+        title: 'RAGAS',
+        language: 'python',
+        code: `from ragas import evaluate
+from ragas.metrics import context_precision, context_recall
+
+# These need ground-truth relevant chunks per query, which is exactly
+# what the golden set provides. Without it, none of them can be computed.
+scores = evaluate(dataset, metrics=[context_recall, context_precision])`,
+        note: 'Retrieval metrics are computed against relevance labels, separately from generation quality, so a failure localises to retrieval vs. generation.',
+      },
+    ],
     detail: [
       'Everything so far produced a ranked list. These metrics say whether it was any good, and they are computed against relevance judgements, not against the model’s output.',
       'This separation is the important part. Generation-side evaluation tells you whether the answer was faithful to the context it was given. It cannot tell you whether the right context was ever retrieved. When answers are wrong, these metrics are what distinguish "the model hallucinated" from "the evidence was never there", two failures with completely different fixes.',
@@ -1881,6 +2004,22 @@ export const onlineStages: Stage[] = [
     kind: 'optional',
     ordinal: '8a',
     tagline: 'Ranking says what is best; the budget says what fits',
+    code: [
+      {
+        title: 'tiktoken',
+        language: 'python',
+        code: `import tiktoken
+enc = tiktoken.encoding_for_model("gpt-4o")
+
+budget, kept = 6962, []          # T_max - system - question - reserved output
+for doc in reranked_docs:        # already in rank order
+    n = len(enc.encode(doc.page_content))
+    if budget - n < 0:
+        break                    # drop the rest, from the BOTTOM of the ranking
+    kept.append(doc); budget -= n`,
+        note: 'Count with the serving model\'s own tokenizer. Character estimates under-count code and non-English by 2x or more, which is exactly when prompts silently overflow.',
+      },
+    ],
     detail: [
       'Reranking produced an ordered list. It did not produce a list that fits. Those are separate problems, and the second one is arithmetic: the system prompt, the chunks, the question and the reserved output tokens all have to sit inside the model window together.',
       'The naive approach is to take the top k for some fixed k, which quietly breaks whenever chunk sizes vary. Ten parent sections are not the same size as ten sentences, and a parent-child setup can produce a top-10 that is four times the budget. Counting tokens is not optional.',
@@ -2103,6 +2242,24 @@ export const onlineStages: Stage[] = [
     kind: 'sequential',
     ordinal: '8',
     tagline: 'Assemble system, context, question',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain_core.prompts import ChatPromptTemplate
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "Answer only from the context. Cite [n]. "
+               "If it is not covered, say so.\\n\\n{context}"),
+    ("human", "{input}"),
+])
+chain = create_retrieval_chain(retriever,
+                               create_stuff_documents_chain(llm, prompt))`,
+        note: 'The licence to abstain in the system prompt is one of the highest-value lines in a RAG stack.',
+      },
+    ],
     detail: [
       'Assemble the final prompt: system prompt, retrieved context, the user question, and formatting instructions.',
       'Ordering and labelling are not cosmetic. Clearly delimited chunks with stable identifiers are what make citation possible downstream, and position within the context window measurably affects what the model attends to.',
@@ -2229,6 +2386,18 @@ export const onlineStages: Stage[] = [
     kind: 'choice',
     ordinal: '9',
     tagline: 'Sampling and decoding are different knobs',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain_openai import ChatOpenAI
+
+# RAG is extraction, not creativity: near-greedy, low temperature,
+# a hard length cap. Any variance not driven by the context is invention.
+llm = ChatOpenAI(model="gpt-4o", temperature=0, max_tokens=800)`,
+        note: 'temperature=0 is effectively greedy decoding. Raise it only for open-ended tasks, never for grounded answers.',
+      },
+    ],
     detail: [
       'Two separate mechanisms that get lumped together constantly.',
       'Sampling, temperature, top-K, top-P, shapes the probability distribution and governs how the next single token is chosen from it.',
@@ -2414,6 +2583,23 @@ export const onlineStages: Stage[] = [
     kind: 'sequential',
     ordinal: '10',
     tagline: 'Format, validate, cite',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from pydantic import BaseModel, Field
+from langchain_openai import ChatOpenAI
+
+class Answer(BaseModel):
+    text: str
+    citations: list[int] = Field(description="ids of the chunks used")
+
+# Constrained decoding: the model cannot emit output off this schema,
+# so there is no parse-and-retry loop.
+structured = ChatOpenAI(model="gpt-4o").with_structured_output(Answer)`,
+        note: 'with_structured_output uses the provider\'s constrained decoding where available, falling back to function-calling otherwise.',
+      },
+    ],
     detail: [
       'Shape the raw output into what the caller expects: format as Markdown, JSON or XML; validate structured output against a schema such as a Pydantic model; attach citations back to the chunks that supported each claim.',
       'Validation belongs here rather than in the caller because a schema failure is recoverable; you can retry generation with the error appended. Once the response has left the pipeline; it is not.',
@@ -2473,6 +2659,18 @@ export const onlineStages: Stage[] = [
     kind: 'optional',
     ordinal: '11',
     tagline: 'Is the answer supported by what we retrieved?',
+    code: [
+      {
+        title: 'RAGAS',
+        language: 'python',
+        code: `from ragas import evaluate
+from ragas.metrics import faithfulness, answer_relevancy
+
+# faithfulness = fraction of answer claims entailed by the retrieved context.
+scores = evaluate(dataset, metrics=[faithfulness, answer_relevancy])`,
+        note: 'RAGAS and LangChain\'s evaluators wrap an LLM-as-judge. Use a different model from the generator to avoid self-preference bias.',
+      },
+    ],
     detail: [
       'Score the response before it ships. This is the generation-side counterpart to the retrieval metrics earlier: those asked whether the right evidence was found, these ask whether the answer actually used it.',
       'Four dimensions. Grounding and faithfulness ask whether the answer is supported by the retrieved context. Relevance asks whether it addresses the question. Completeness asks whether anything was left out.',
