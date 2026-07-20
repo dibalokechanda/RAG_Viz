@@ -1221,9 +1221,11 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
     ordinal: '5b',
     tagline: 'How each vector is stored, orthogonal to the index',
     detail: [
-      'Quantisation is not an indexing method. It does not decide which vectors to compare; it decides how many bytes each one occupies and how its distance is approximated. That is why it composes with any index structure, IVF-PQ and HNSW-PQ are both ordinary combinations, not distinct algorithms.',
-      'The reason to care is that memory, not compute, is what stops vector search from scaling. A hundred million 1536-d float32 vectors is 614 GB, which is a fleet of machines. At 64× compression it is under 10 GB, which is one.',
-      'Every compression scheme is lossy, so distances become estimates and recall drops. The standard remedy is a two-pass search: shortlist on compressed vectors, then re-score that shortlist against the exact ones.',
+      '**Quantisation is not an indexing method:**',
+      '- It does not decide *which* vectors to compare; it decides *how many bytes* each occupies and how its distance is approximated.',
+      '- It composes with any index structure. IVF-PQ and HNSW-PQ are ordinary combinations, not distinct algorithms.',
+      '**Why it matters:** Memory, not compute, is what stops vector search from scaling. A hundred million 1536-d float32 vectors is 614 GB (a fleet of machines). At 64× compression it is under 10 GB (one machine).',
+      '**The tradeoff:** Every compression scheme is lossy, so distances become estimates and recall drops. The standard remedy is a **two-pass search**: shortlist on compressed vectors, then re-score that shortlist against the exact ones.',
     ],
     math: [
       {
@@ -1251,8 +1253,11 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
         id: 'none',
         label: 'None (float32)',
         tagline: 'Exact vectors, exact distances',
-        detail:
-          'Store the raw floats. Distances are exact, so the only recall loss in the whole system comes from the index structure. The right default until memory actually hurts.',
+        detail: [
+          '**How it works:** Store the raw floats.',
+          '**The result:** Distances are exact, so the only recall loss in the whole system comes from the index structure.',
+          '**When to use:** The right default until memory actually hurts.',
+        ],
         math: [
           {
             title: 'Footprint',
@@ -1269,8 +1274,11 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
         id: 'sq',
         label: 'Scalar (SQ8)',
         tagline: 'float32 → int8, per dimension',
-        detail:
-          'Map each dimension independently onto 256 levels between its observed minimum and maximum. Four times smaller, cheap to compute, and typically costs well under one percent of recall, the best effort-to-benefit ratio available.',
+        detail: [
+          '**How it works:** Map each dimension independently onto 256 levels between its observed minimum and maximum.',
+          '**The tradeoff:** Four times smaller and cheap to compute, and typically costs well under 1% of recall.',
+          '**When to use:** It provides the best effort-to-benefit ratio available.',
+        ],
         math: [
           {
             title: 'Quantise and reconstruct',
@@ -1296,8 +1304,10 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
         id: 'pq',
         label: 'Product Quantisation',
         tagline: 'Split into subvectors, replace each with a codebook id',
-        detail:
-          'Cut the vector into m contiguous subvectors. Run k-means separately within each subspace to learn 2^b centroids, and store only which centroid each subvector landed on. A 1536-d vector becomes m bytes; you are no longer storing the vector at all, only a list of "which of 256 prototypes did this slice most resemble".',
+        detail: [
+          '**How it works:** Cut the vector into `m` contiguous subvectors. Run k-means separately within each subspace to learn `2^b` centroids, and store only which centroid each subvector landed on.',
+          '**The result:** A 1536-d vector becomes `m` bytes. You are no longer storing the vector at all, only a list of "which of 256 prototypes did this slice most resemble".',
+        ],
         figures: [
           {
             kind: 'blocks',
@@ -1381,8 +1391,11 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
         id: 'binary',
         label: 'Binary',
         tagline: 'One bit per dimension',
-        detail:
-          'Keep only the sign of each component. Similarity becomes Hamming distance, computed with XOR and a popcount instruction, extraordinarily fast, and 32× smaller. Far too lossy to be a final answer, but excellent as a first-pass filter that a re-scoring stage then cleans up.',
+        detail: [
+          '**How it works:** Keep only the sign of each component.',
+          '**The result:** Similarity becomes Hamming distance, computed with XOR and a popcount instruction. Extraordinarily fast, and 32× smaller.',
+          '**When to use:** Far too lossy to be a final answer, but excellent as a first-pass filter that a re-scoring stage then cleans up.',
+        ],
         math: [
           {
             title: 'Encoding and scoring',
@@ -1406,8 +1419,9 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
         kind: 'idea',
         summary: 'IVF-PQ is a composition, not an algorithm',
         detail: [
-          'Index structure decides which vectors are compared. Compression decides how each one is stored and how its distance is estimated. Any structure combines with any scheme.',
-          'IVF-PQ is simply IVF partitioning with PQ-encoded vectors inside the cells; it is named as a unit only because it is the most common pairing at scale. HNSW-PQ, HNSW-SQ and flat-PQ are all equally valid, and each occupies a different point on the memory/recall curve.',
+          '**Index structure** decides which vectors are compared. **Compression** decides how each one is stored and how its distance is estimated. Any structure combines with any scheme.',
+          '**Example:** IVF-PQ is simply IVF partitioning with PQ-encoded vectors inside the cells; it is named as a unit only because it is the most common pairing at scale.',
+          'HNSW-PQ, HNSW-SQ and flat-PQ are all equally valid, and each occupies a different point on the memory/recall curve.',
         ],
         children: [
           {
