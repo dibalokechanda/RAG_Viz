@@ -201,6 +201,39 @@ export type Figure =
       /** Point-by-point walkthrough rendered as an ordered list under the figure. */
       steps?: string[]
     }
+  /**
+   * Isometric 3D view of a multi-layer HNSW graph. `build` animates node
+   * insertion; `search` animates the greedy descent to a query. Node positions
+   * are (x, z) in [0,1] within each layer plane; per-layer edges and the search
+   * path are computed from the geometry.
+   */
+  | {
+      kind: 'hnsw3d'
+      mode: 'build' | 'search'
+      title?: string
+      caption?: string
+      steps?: string[]
+      layers: number[]
+      nodes: { id: string; x: number; z: number; maxLayer: number; isEntry?: boolean }[]
+      /** Query point (x, z) in [0,1], for `search` mode. */
+      query?: { x: number; z: number }
+    }
+  /**
+   * IVF partition: Voronoi cells around k-means centroids. Animates a query
+   * probing its nprobe nearest cells. Coordinates are (x, y) in [0,1]; cell
+   * membership and the searched set are computed from the geometry.
+   */
+  | {
+      kind: 'ivf'
+      title?: string
+      caption?: string
+      steps?: string[]
+      centroids: { x: number; y: number }[]
+      points: { x: number; y: number }[]
+      query: { x: number; y: number }
+      /** Cells searched at query time. */
+      nprobe: number
+    }
 
 /**
  * A node in a stage's concept mind-map. Concepts nest arbitrarily deep; the

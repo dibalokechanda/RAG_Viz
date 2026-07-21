@@ -63,7 +63,9 @@ export default function FigureD3Network({ f }: { f: Extract<Figure, { kind: 'net
                .attr('fill', 'var(--ink)')
                .attr('stroke', 'var(--ink)')
                
-            const pulse = svg.insert('circle', `#node-${curr.id}`)
+            // Append (don't insert-before): each node <circle> lives inside a
+            // <g>, so it isn't a direct child of <svg> and insertBefore throws.
+            const pulse = svg.append('circle')
                .attr('class', 'pulse-ring')
                .attr('cx', curr.x)
                .attr('cy', curr.y)
@@ -189,6 +191,12 @@ export default function FigureD3Network({ f }: { f: Extract<Figure, { kind: 'net
                 {n.label}
               </text>
             )}
+            {/* Node id label, so a table row like "a" maps to a circle. */}
+            {!n.isEntry && !n.isTarget && (
+              <text x={n.x} y={n.y - 11} fontSize="10" fontFamily="var(--mono)" fill="var(--text-faint)" textAnchor="middle" style={{ pointerEvents: 'none' }}>
+                {n.id}
+              </text>
+            )}
           </g>
         ))}
         {f.annotations?.map((a, i) => (
@@ -196,6 +204,15 @@ export default function FigureD3Network({ f }: { f: Extract<Figure, { kind: 'net
             {a.text}
           </text>
         ))}
+        {/* legend */}
+        <g transform="translate(12, 226)">
+          <line x1="0" y1="0" x2="18" y2="0" stroke="var(--ink)" strokeWidth="2.5" />
+          <text x="24" y="3.5" fontSize="9.5" fontFamily="var(--mono)" fill="var(--text-dim)">search path</text>
+          <line x1="122" y1="0" x2="140" y2="0" stroke="var(--border-heavy)" strokeWidth="1.5" />
+          <text x="146" y="3.5" fontSize="9.5" fontFamily="var(--mono)" fill="var(--text-dim)">graph edge</text>
+          <circle cx="238" cy="0" r="4" fill="#a32a2a" />
+          <text x="247" y="3.5" fontSize="9.5" fontFamily="var(--mono)" fill="var(--text-dim)">query</text>
+        </g>
       </svg>
 
       {tableData && (

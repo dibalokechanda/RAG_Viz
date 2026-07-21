@@ -29,7 +29,9 @@
       "Bash(perl -i -pe \"s/model\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'s own tokenizer/model\\\\\\\\\\\\\\\\'s own tokenizer/; s/provider\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'s constrained/provider\\\\\\\\\\\\\\\\'s constrained/; s/LangChain\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\'s evaluators/LangChain\\\\\\\\\\\\\\\\'s evaluators/\" src/data/stages.online.ts)",
       "Bash(awk \"/kind: 'network'/,/^    \\\\}/\" src/data/types.ts)",
       "Bash(awk \"/kind: 'layered'/,/^    \\\\}/\" src/data/types.ts)",
-      "Bash(node -e \"for\\(const f of ['src/data/stages.offline.ts']\\){const s=require\\('fs'\\).readFileSync\\(f,'utf8'\\);console.log\\('em dashes:',\\(s.match\\(/—/g\\)||[]\\).length\\)}\")"
+      "Bash(node -e \"for\\(const f of ['src/data/stages.offline.ts']\\){const s=require\\('fs'\\).readFileSync\\(f,'utf8'\\);console.log\\('em dashes:',\\(s.match\\(/—/g\\)||[]\\).length\\)}\")",
+      "Bash(node -e \"const d3=require\\('d3'\\); console.log\\('Delaunay:', typeof d3.Delaunay\\)\")",
+      "Bash(node -e \"let e=0;for\\(const f of ['src/data/stages.offline.ts']\\)e+=\\(require\\('fs'\\).readFileSync\\(f,'utf8'\\).match\\(/—/g\\)||[]\\).length;console.log\\('em dashes:',e\\)\")"
     ]
   }
 }

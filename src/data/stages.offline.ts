@@ -1,6 +1,28 @@
 import type { Stage } from './types'
 
 /**
+ * Shared node set for the two isometric 3D HNSW figures (build + search), so
+ * the structure the user builds is the exact one the query then searches.
+ * (x, z) are in [0,1] within each layer plane; maxLayer is the top layer the
+ * node reaches. n0 is the entry point, present on every layer.
+ */
+const HNSW3D_NODES = [
+  { id: 'n0', x: 0.18, z: 0.25, maxLayer: 3, isEntry: true },
+  { id: 'n1', x: 0.62, z: 0.3, maxLayer: 2 },
+  { id: 'n2', x: 0.8, z: 0.62, maxLayer: 2 },
+  { id: 'n3', x: 0.4, z: 0.55, maxLayer: 1 },
+  { id: 'n4', x: 0.7, z: 0.45, maxLayer: 1 },
+  { id: 'n5', x: 0.25, z: 0.7, maxLayer: 1 },
+  { id: 'n6', x: 0.52, z: 0.78, maxLayer: 0 },
+  { id: 'n7', x: 0.88, z: 0.35, maxLayer: 0 },
+  { id: 'n8', x: 0.35, z: 0.35, maxLayer: 0 },
+  { id: 'n9', x: 0.6, z: 0.62, maxLayer: 0 },
+  { id: 'n10', x: 0.15, z: 0.5, maxLayer: 0 },
+  { id: 'n11', x: 0.78, z: 0.82, maxLayer: 0 },
+  { id: 'n12', x: 0.45, z: 0.15, maxLayer: 0 },
+]
+
+/**
  * OFFLINE PATH, runs before anyone asks a question. Its only output is the
  * vector index, which the online path then reads.
  */
@@ -1132,6 +1154,39 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
         tagline: 'Partition into cells, search only a few',
         detail:
           'Inverted File index. Run k-means over the corpus to learn nlist centroids, and assign every vector to its nearest one. At query time, find the nprobe centroids closest to the query and search only those cells, ignoring the rest of the corpus entirely.',
+        figures: [
+          {
+            kind: 'ivf',
+            title: 'IVF · probing the nearest cells',
+            nprobe: 2,
+            centroids: [
+              { x: 0.22, y: 0.28 },
+              { x: 0.5, y: 0.22 },
+              { x: 0.8, y: 0.32 },
+              { x: 0.28, y: 0.6 },
+              { x: 0.62, y: 0.6 },
+              { x: 0.82, y: 0.8 },
+            ],
+            points: [
+              { x: 0.15, y: 0.22 }, { x: 0.28, y: 0.32 }, { x: 0.2, y: 0.38 }, { x: 0.12, y: 0.33 },
+              { x: 0.45, y: 0.15 }, { x: 0.56, y: 0.28 }, { x: 0.5, y: 0.1 }, { x: 0.42, y: 0.26 },
+              { x: 0.85, y: 0.28 }, { x: 0.75, y: 0.4 }, { x: 0.9, y: 0.38 }, { x: 0.82, y: 0.22 },
+              { x: 0.22, y: 0.68 }, { x: 0.35, y: 0.55 }, { x: 0.3, y: 0.72 }, { x: 0.18, y: 0.55 }, { x: 0.42, y: 0.5 },
+              { x: 0.68, y: 0.55 }, { x: 0.58, y: 0.68 }, { x: 0.7, y: 0.65 }, { x: 0.6, y: 0.52 },
+              { x: 0.86, y: 0.85 }, { x: 0.78, y: 0.75 }, { x: 0.9, y: 0.78 },
+            ],
+            query: { x: 0.5, y: 0.45 },
+            steps: [
+              'Offline, k-means partitions the corpus into nlist cells, each with a centroid (the diamonds).',
+              'Every vector is stored in the cell of its nearest centroid, giving the Voronoi tiling.',
+              'At query time, only the nprobe cells whose centroids are nearest the query are opened.',
+              'Those cells are scanned exhaustively; every other cell is skipped, which is where the speed comes from.',
+              'nprobe is the recall dial: with only 2 of 6 cells open, a near neighbour just over a boundary is missed.',
+            ],
+            caption:
+              'Searching 2 of 6 cells touches roughly a third of the corpus. But the true nearest vector (dashed red) fell in an unopened cell, so it is missed until nprobe is raised, the exact tradeoff behind "recall drops near cell boundaries".',
+          },
+        ],
         math: [
           {
             title: 'Vectors actually scanned',
@@ -1162,6 +1217,7 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
           '**A hierarchy of graphs, the probability skip list.** Each vector is assigned a random maximum layer whose probability decays exponentially, so the top layer holds only a few nodes and each layer down holds roughly *e* times more. The base layer L0 holds every node.',
           '**Sparse on top, dense at the bottom.** Upper layers have few nodes and long links, for crossing the space fast. Lower layers have many nodes and short links, for fine refinement.',
           '**Search descends layer by layer.** Enter at the sparse top, greedily hop to a local minimum, then drop to the same node one layer down and hop again. Long coarse hops first, short precise hops last, which is what gives the O(log N) cost. The second diagram animates this descent.',
+          '**Insertion vs. query, the same walk doing two jobs.** At *index time* each document vector is **inserted**: it runs this greedy search to find its nearest neighbours, then is added as a permanent node and wired to them (Step 3, the build). At *query time* the query vector only **navigates** the existing graph the same way (Steps 1, 2 and 4), lands on the nearest nodes, and is then discarded, it never becomes part of the index. If queries were inserted, every question would permanently bloat the graph with non-document vectors.',
         ],
         math: [
           {
@@ -1285,7 +1341,37 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
             ],
             caption:
               'The same greedy search as above, run once per layer. Starting sparse and finishing dense is what turns a linear scan into a logarithmic one: the early layers throw away most of the graph in a few long hops.',
-          }
+          },
+          {
+            kind: 'hnsw3d',
+            mode: 'build',
+            title: 'Step 3 · Building the layered graph (3D)',
+            layers: [0, 1, 2, 3],
+            nodes: HNSW3D_NODES,
+            steps: [
+              'Every node is inserted with a randomly chosen top layer; the chance of reaching each higher layer decays exponentially.',
+              'A node is added to every layer from L0 up to its top layer, wired to its nearest neighbours on each.',
+              'So L0 holds all N nodes and is dense, while the upper layers stay sparse: a handful of long-range express lanes.',
+            ],
+            caption:
+              'The same node appears on several stacked planes, joined by the dashed vertical connectors. Height is the layer; the tilt is only there to show the layers in 3D.',
+          },
+          {
+            kind: 'hnsw3d',
+            mode: 'search',
+            title: 'Step 4 · Answering a query through the layers (3D)',
+            layers: [0, 1, 2, 3],
+            nodes: HNSW3D_NODES,
+            query: { x: 0.55, z: 0.68 },
+            steps: [
+              'The query (the red cross) is a point in the same space as the indexed vectors.',
+              'Enter at the top layer and greedily hop toward the query until no neighbour is closer.',
+              'Drop to the same node on the next layer down and repeat; each layer is denser, so the match refines.',
+              'On L0 the final greedy walk lands on the nearest vector, then connects to the query.',
+            ],
+            caption:
+              'The descent from Step 2, now run over the graph built in Step 3. Coarse jumps on the sparse top layers cover the distance; the dense base layer does the fine matching.',
+          },
         ],
         tradeoffs: {
           gains: ['Best recall-per-millisecond at high recall', 'No training pass', 'Incremental inserts', 'ef_search tunable at query time'],

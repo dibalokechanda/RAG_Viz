@@ -1,6 +1,8 @@
 import type { Figure } from '../data/types'
 import FigureD3Network from './FigureD3Network'
 import FigureD3Layered from './FigureD3Layered'
+import FigureHNSW3D from './FigureHNSW3D'
+import FigureIVF from './FigureIVF'
 
 /**
  * Inline monochrome diagrams. Everything is plain SVG on a 0–W viewBox that
@@ -512,12 +514,21 @@ export default function FigureView({ figure }: { figure: Figure }) {
       <FigureD3Network f={figure} />
     ) : figure.kind === 'layered' ? (
       <FigureD3Layered f={figure} />
+    ) : figure.kind === 'hnsw3d' ? (
+      <FigureHNSW3D f={figure} />
+    ) : figure.kind === 'ivf' ? (
+      <FigureIVF f={figure} />
     ) : (
       <Blocks f={figure} />
     )
 
   const steps =
-    figure.kind === 'network' || figure.kind === 'layered' ? figure.steps : undefined
+    figure.kind === 'network' ||
+    figure.kind === 'layered' ||
+    figure.kind === 'hnsw3d' ||
+    figure.kind === 'ivf'
+      ? figure.steps
+      : undefined
 
   return (
     <figure className="fig">
