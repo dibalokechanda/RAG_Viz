@@ -28,107 +28,114 @@ export default function FigureD3Network({ f }: { f: Extract<Figure, { kind: 'net
     const maxDist = Math.hypot(400, 240)
 
     async function runAnimation() {
-      while (!isUnmounted) {
-        // Reset
-        svg.selectAll('.node-circle')
-           .transition().duration(200)
-           .attr('fill', 'var(--surface-hover)')
-           .attr('stroke', 'var(--border-strong)')
-           .attr('stroke-width', '1.5')
-           .attr('r', '7')
-           
-        svg.selectAll('.node-target')
-           .transition().duration(200)
-           .attr('fill', '#a32a2a')
-           .attr('stroke', '#a32a2a')
-
-        svg.selectAll('.link-line')
-           .transition().duration(200)
-           .attr('stroke', 'var(--border-heavy)')
-           .attr('stroke-width', '1.5')
-           
-        svg.selectAll('.pulse-ring').remove()
-
-        setTableData(null)
-        await wait(1000)
-        if (isUnmounted) break
-
-        let curr = entry!
-
-        while (true) {
-          // Highlight current node and add pulse
-          svg.select(`#node-${curr.id}`)
-             .transition().duration(300)
-             .attr('fill', 'var(--ink)')
-             .attr('stroke', 'var(--ink)')
+      try {
+        while (!isUnmounted) {
+          // Reset
+          svg.selectAll('.node-circle')
+             .transition().duration(200)
+             .attr('fill', 'var(--surface-hover)')
+             .attr('stroke', 'var(--border-strong)')
+             .attr('stroke-width', '1.5')
+             .attr('r', '7')
              
-          const pulse = svg.insert('circle', `#node-${curr.id}`)
-             .attr('class', 'pulse-ring')
-             .attr('cx', curr.x)
-             .attr('cy', curr.y)
-             .attr('r', 7)
-             .attr('fill', 'none')
-             .attr('stroke', 'var(--ink)')
-             .attr('stroke-width', 2)
-             .attr('opacity', 1)
-             
-          pulse.transition()
-             .duration(1000)
-             .attr('r', 20)
-             .attr('opacity', 0)
-             .on('end', function() { d3.select(this).remove() })
+          svg.selectAll('.node-target')
+             .transition().duration(200)
+             .attr('fill', '#a32a2a')
+             .attr('stroke', '#a32a2a')
 
-          // Find neighbours
-          const neighbourIds = f.links
-            .filter(l => l.source === curr.id || l.target === curr.id)
-            .map(l => l.source === curr.id ? l.target : l.source)
+          svg.selectAll('.link-line')
+             .transition().duration(200)
+             .attr('stroke', 'var(--border-heavy)')
+             .attr('stroke-width', '1.5')
+             
+          svg.selectAll('.pulse-ring').remove()
+
+          setTableData(null)
+          await wait(1000)
+          if (isUnmounted) break
+
+          let curr = entry!
+
+          while (true) {
+            // Highlight current node and add pulse
+            svg.select(`#node-${curr.id}`)
+               .transition().duration(300)
+               .attr('fill', 'var(--ink)')
+               .attr('stroke', 'var(--ink)')
+               
+            const pulse = svg.insert('circle', `#node-${curr.id}`)
+               .attr('class', 'pulse-ring')
+               .attr('cx', curr.x)
+               .attr('cy', curr.y)
+               .attr('r', 7)
+               .attr('fill', 'none')
+               .attr('stroke', 'var(--ink)')
+               .attr('stroke-width', 2)
+               .attr('opacity', 1)
+               
+            pulse.transition()
+               .duration(1000)
+               .attr('r', 20)
+               .attr('opacity', 0)
+               .on('end', function() { d3.select(this).remove() })
+
+            // Find neighbours
+            const neighbourIds = f.links
+              .filter(l => l.source === curr.id || l.target === curr.id)
+              .map(l => l.source === curr.id ? l.target : l.source)
+              
+            const neighbours = neighbourIds.map(id => {
+              const n = f.nodes.find(node => node.id === id)!
+              const dist = Math.hypot(n.x - target!.x, n.y - target!.y)
+              return { id, dist, similarity: 1 - dist / maxDist }
+            })
+
+            // Sort by similarity descending
+            neighbours.sort((a, b) => b.similarity - a.similarity)
             
-          const neighbours = neighbourIds.map(id => {
-            const n = f.nodes.find(node => node.id === id)!
-            const dist = Math.hypot(n.x - target!.x, n.y - target!.y)
-            return { id, dist, similarity: 1 - dist / maxDist }
-          })
+            const currDist = Math.hypot(curr.x - target!.x, curr.y - target!.y)
+            const currSim = 1 - currDist / maxDist
+            
+            const best = neighbours.length > 0 ? neighbours[0] : null
+            const hopsTo = best && best.similarity > currSim ? best.id : null
 
-          // Sort by similarity descending
-          neighbours.sort((a, b) => b.similarity - a.similarity)
+            setTableData({
+              status: hopsTo ? `Evaluating neighbours of ${curr.label || curr.id}...` : `Local minimum reached at ${curr.label || curr.id}.`,
+              rows: neighbours.map(n => ({
+                id: n.id,
+                similarity: n.similarity,
+                isChosen: n.id === hopsTo
+              }))
+            })
+
+            if (!hopsTo) break
+
+            await wait(1500)
+            if (isUnmounted) break
+
+            // Animate link
+            svg.select(`#link-${curr.id}-${hopsTo}`)
+               .transition().duration(300)
+               .attr('stroke', 'var(--ink)')
+               .attr('stroke-width', '2.5')
+            svg.select(`#link-${hopsTo}-${curr.id}`)
+               .transition().duration(300)
+               .attr('stroke', 'var(--ink)')
+               .attr('stroke-width', '2.5')
+            
+            await wait(800)
+            if (isUnmounted) break
+            
+            curr = f.nodes.find(n => n.id === hopsTo)!
+          }
           
-          const currDist = Math.hypot(curr.x - target!.x, curr.y - target!.y)
-          const currSim = 1 - currDist / maxDist
-          
-          const best = neighbours.length > 0 ? neighbours[0] : null
-          const hopsTo = best && best.similarity > currSim ? best.id : null
-
-          setTableData({
-            status: hopsTo ? `Evaluating neighbours of ${curr.label || curr.id}...` : `Local minimum reached at ${curr.label || curr.id}.`,
-            rows: neighbours.map(n => ({
-              id: n.id,
-              similarity: n.similarity,
-              isChosen: n.id === hopsTo
-            }))
-          })
-
-          if (!hopsTo) break
-
-          await wait(1500)
-          if (isUnmounted) break
-
-          // Animate link
-          svg.select(`#link-${curr.id}-${hopsTo}`)
-             .transition().duration(300)
-             .attr('stroke', 'var(--ink)')
-             .attr('stroke-width', '2.5')
-          svg.select(`#link-${hopsTo}-${curr.id}`)
-             .transition().duration(300)
-             .attr('stroke', 'var(--ink)')
-             .attr('stroke-width', '2.5')
-          
-          await wait(800)
-          if (isUnmounted) break
-          
-          curr = f.nodes.find(n => n.id === hopsTo)!
+          await wait(3500)
         }
-        
-        await wait(3500)
+      } catch (err: any) {
+        setTableData({
+          status: `Error: ${err.message}`,
+          rows: []
+        })
       }
     }
     

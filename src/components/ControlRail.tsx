@@ -153,7 +153,7 @@ export default function ControlRail({ collapsed }: { collapsed: boolean }) {
           </div>
         </div>
         <div className="field-note" style={{ marginTop: 12 }}>
-          Six stages that govern the pipeline without sitting on the query path. A query never
+          Eight stages that govern the pipeline without sitting on the query path. A query never
           passes through them, so the walkthrough skips them.
         </div>
       </div>
