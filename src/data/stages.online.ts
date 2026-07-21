@@ -1072,6 +1072,32 @@ docs = retriever.invoke("How is FAISS different from HNSW?")`,
           costs: ['Two retrieval systems to run and keep in sync', 'Requires a fusion step', 'Roughly doubles retrieval latency unless parallelised'],
         },
       },
+      {
+        id: 'multi-vector',
+        label: 'Multi-vector (ColBERT)',
+        tagline: 'Token-level embeddings instead of one vector per chunk',
+        detail:
+          'Instead of compressing a whole chunk into a single vector, represent it as a matrix of token-level vectors. At retrieval time, match the query tokens directly against the chunk tokens (MaxSim). This bridges the gap between dense semantic search and sparse term matching.',
+        tradeoffs: {
+          gains: ['Incredible precision', 'Does not dilute token importance like pooling does'],
+          costs: ['Massive index size (10x-50x larger than dense)', 'Slower retrieval'],
+        },
+      },
+      {
+        id: 'parent-child',
+        label: 'Parent–Child',
+        tagline: 'Retrieve the child, return the parent',
+        detail:
+          'At query time, search against the index of small, precise child chunks. When a match is found, look up its parent document ID and return the entire parent section to the LLM instead. This provides the precision of a small embedding window with the generation context of a large window.',
+        example: { before: 'Search: "What is HNSW?"', after: 'Matches a 2-sentence chunk, returns the 5-page chapter', mono: true },
+      },
+      {
+        id: 'hierarchical',
+        label: 'Hierarchical Retrieval',
+        tagline: 'Descend the tree: document → section → chunk',
+        detail:
+          'On massive corpora (millions of documents), a flat ANN search is too noisy. Instead, use an LLM or router to retrieve the relevant broad documents first, then search within their sections, and finally retrieve the exact chunks. It acts as a semantic filter that dramatically prunes the search space.',
+      },
     ],
     concepts: [
       {
@@ -1108,6 +1134,16 @@ docs = retriever.invoke("How is FAISS different from HNSW?")`,
           },
         ],
       },
+      {
+        id: 'ret-metadata',
+        label: 'Metadata pre-filtering',
+        kind: 'method',
+        summary: 'Tenant, language, and date belong here',
+        detail: [
+          'Metadata should rarely be embedded in the text. If a query is for a specific tenant or date range, use hard metadata filters to push that logic directly into the ANN engine before the search happens.',
+          'Pre-filtering ensures that the top-K returned actually belong to the right tenant. Post-filtering (retrieving 1000 chunks then throwing away the wrong tenant) is fragile and inevitably leads to empty result sets.',
+        ],
+      },
     ],
     trace: {
       headline: 'Candidates retrieved',
@@ -1120,122 +1156,71 @@ docs = retriever.invoke("How is FAISS different from HNSW?")`,
   {
     id: 'rrf',
     icon: 'merge',
-    label: 'Reciprocal Rank Fusion',
+    label: 'Retrieval Fusion',
     phase: 'online',
-    kind: 'sequential',
+    kind: 'choice',
     ordinal: '6',
-    tagline: 'Merge ranked lists, not scores',
-    code: [
+    tagline: 'Merge distinct result sets into one',
+    variants: [
       {
-        title: 'LangChain',
-        language: 'python',
-        code: `from langchain.retrievers import EnsembleRetriever
-from langchain_community.retrievers import BM25Retriever
-
-sparse = BM25Retriever.from_documents(chunks); sparse.k = 50
-dense  = store.as_retriever(search_kwargs={"k": 50})
-
-# EnsembleRetriever fuses the two ranked lists with Reciprocal Rank Fusion.
-hybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
-        note: 'This is hybrid retrieval and RRF in one object. Fusion is rank-based, so the dense and sparse scores never need to share a scale.',
+        id: 'rrf',
+        label: 'Reciprocal Rank Fusion',
+        tagline: 'Merge ranked lists, not scores',
+        code: [
+          {
+            title: 'LangChain',
+            language: 'python',
+            code: `from langchain.retrievers import EnsembleRetriever\nfrom langchain_community.retrievers import BM25Retriever\n\nsparse = BM25Retriever.from_documents(chunks); sparse.k = 50\ndense  = store.as_retriever(search_kwargs={"k": 50})\n\n# EnsembleRetriever fuses the two ranked lists with Reciprocal Rank Fusion.\nhybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
+            note: 'This is hybrid retrieval and RRF in one object. Fusion is rank-based, so the dense and sparse scores never need to share a scale.',
+          },
+        ],
+        detail: [
+          'RRF combines rankings, not similarity scores, and that is the entire point. A cosine similarity of 0.82 and a BM25 score of 14.3 are not on the same scale and cannot be meaningfully averaged. Ranks are comparable; raw scores are not.',
+          'Each document scores the sum of 1/(k + rank) across the lists it appears in. Appearing high in both lists beats appearing first in only one.',
+          'The constant k is doing quiet but essential work. Without it the formula would be 1/rank, and rank 1 would score double rank 2, meaning whichever retriever happened to put something first would effectively decide the fused order on its own. Setting k = 60 flattens the curve near the top so that being consistently good across retrievers outweighs being first in one.',
+        ],
+        math: [
+          {
+            title: 'Reciprocal Rank Fusion',
+            tex: String.raw`\text{RRF}(d) = \sum_{r \in R} \frac{1}{k + \text{rank}_r(d)}`,
+            where: [
+              { sym: String.raw`R`, means: 'the set of ranked lists being fused' },
+              { sym: String.raw`\text{rank}_r(d)`, means: 'position of d in list r, 1-indexed (∞ if absent)' },
+              { sym: String.raw`k`, means: 'a damping constant, conventionally 60' },
+            ],
+            note: 'k flattens the curve near the top. Without it, rank 1 would score twice rank 2, letting a single list dictate the fused order.',
+          },
+        ],
+        example: {
+          beforeLabel: 'Input rankings',
+          before: 'Dense:   A  B  C\nSparse:  B  D  A',
+          afterLabel: 'Fused (k = 60)',
+          after: 'B  0.03252   (ranks 2, 1)\nA  0.03226   (ranks 1, 3)\nD  0.01613   (rank 2 only)\nC  0.01587   (rank 3 only)',
+          mono: true,
+        },
+      },
+      {
+        id: 'weighted-rrf',
+        label: 'Weighted RRF',
+        tagline: 'RRF with unequal retriever weights',
+        detail: [
+          'Standard RRF assumes all retrievers are equally good. If you know that your semantic index is much stronger than your keyword index for typical queries, you can weight the branches.',
+          'By scaling the reciprocal rank before summing it, you preserve the rank-based safety (no score normalisation) while telling the system which list to trust more.',
+        ],
+      },
+      {
+        id: 'learned',
+        label: 'Learned Fusion',
+        tagline: 'Train a model to combine scores',
+        detail: [
+          'If you have thousands of labelled queries (query, document, relevance), you can train a small gradient-boosted tree (like LambdaMART) to combine the raw dense score, the sparse score, and any metadata scores.',
+          'This abandons rank-based safety in exchange for letting a model learn exactly how a cosine of 0.85 trades off against a BM25 of 14.3 for your specific corpus. It requires constant retraining as the corpus evolves.',
+        ],
       },
     ],
     detail: [
-      'RRF combines rankings, not similarity scores, and that is the entire point. A cosine similarity of 0.82 and a BM25 score of 14.3 are not on the same scale and cannot be meaningfully averaged. Ranks are comparable; raw scores are not.',
-      'Each document scores the sum of 1/(k + rank) across the lists it appears in. Appearing high in both lists beats appearing first in only one.',
-      'The constant k is doing quiet but essential work. Without it the formula would be 1/rank, and rank 1 would score double rank 2, meaning whichever retriever happened to put something first would effectively decide the fused order on its own. Setting k = 60 flattens the curve near the top so that being consistently good across retrievers outweighs being first in one.',
+      'Retrieving from multiple indexes (dense, sparse, relational) leaves you with separate, incompatible result sets. Fusion is the step that combines them into a single ranked list for downstream stages to consume.',
     ],
-    figures: [
-      {
-        kind: 'curve',
-        title: 'What k does to the rank weighting',
-        xLabel: 'rank',
-        yLabel: 'weight',
-        lines: [
-          {
-            points: [
-              [1, 1],
-              [2, 0.9839],
-              [3, 0.9683],
-              [4, 0.9531],
-              [5, 0.9385],
-              [6, 0.9242],
-              [7, 0.9104],
-              [8, 0.8971],
-              [9, 0.8841],
-              [10, 0.8714],
-            ],
-          },
-          {
-            dashed: true,
-            points: [
-              [1, 1],
-              [2, 0.5],
-              [3, 0.3333],
-              [4, 0.25],
-              [5, 0.2],
-              [6, 0.1667],
-              [7, 0.1429],
-              [8, 0.125],
-              [9, 0.1111],
-              [10, 0.1],
-            ],
-          },
-        ],
-        marks: [{ x: 10, y: 0.8714, label: 'k = 60' }],
-        xTicks: [
-          { at: 1, label: '1' },
-          { at: 5, label: '5' },
-          { at: 10, label: '10' },
-        ],
-        yTicks: [
-          { at: 0, label: '0' },
-          { at: 0.5, label: '½' },
-          { at: 1, label: '1' },
-        ],
-        caption:
-          'Both curves normalised to their rank-1 value. The dashed line is k = 0, a cliff, where rank 2 is worth half of rank 1 and a single list dictates the outcome. With k = 60 the top ten ranks span only 1.00 to 0.87, so position still matters but gently, and agreement between retrievers becomes the dominant signal.',
-      },
-    ],
-    math: [
-      {
-        title: 'Reciprocal Rank Fusion',
-        tex: String.raw`\text{RRF}(d) = \sum_{r \in R} \frac{1}{k + \text{rank}_r(d)}`,
-        where: [
-          { sym: String.raw`R`, means: 'the set of ranked lists being fused' },
-          { sym: String.raw`\text{rank}_r(d)`, means: 'position of d in list r, 1-indexed (∞ if absent)' },
-          { sym: String.raw`k`, means: 'a damping constant, conventionally 60' },
-        ],
-        note: 'k flattens the curve near the top. Without it, rank 1 would score twice rank 2, letting a single list dictate the fused order.',
-      },
-      {
-        title: 'Worked, the two lists from retrieval',
-        tex: String.raw`\text{Dense: } A, B, C \qquad \text{Sparse: } B, D, A \qquad k = 60`,
-        worked: [
-          { tex: String.raw`\text{RRF}(B) = \tfrac{1}{60+2} + \tfrac{1}{60+1} = 0.01613 + 0.01639 = 0.03252` },
-          { tex: String.raw`\text{RRF}(A) = \tfrac{1}{60+1} + \tfrac{1}{60+3} = 0.01639 + 0.01587 = 0.03226` },
-          { tex: String.raw`\text{RRF}(D) = \tfrac{1}{60+2} = 0.01613` },
-          { tex: String.raw`\text{RRF}(C) = \tfrac{1}{60+3} = 0.01587` },
-          { tex: String.raw`\Rightarrow B \succ A \succ D \succ C`, caption: 'B wins despite never topping the dense list' },
-        ],
-        note: 'A was rank 1 in dense but only rank 3 in sparse. B was rank 2 and rank 1. Consistency across both lists beats a single first place, which is exactly the behaviour you want from a fusion rule.',
-      },
-      {
-        title: 'Effect of k',
-        tex: String.raw`k \to 0 \implies \text{rank 1 dominates}; \quad k \to \infty \implies \text{all ranks equal}`,
-        worked: [
-          { tex: String.raw`k = 0: \tfrac{1}{1} = 1.0 \text{ vs } \tfrac{1}{2} = 0.5`, caption: 'a 2× gap between ranks 1 and 2' },
-          { tex: String.raw`k = 60: \tfrac{1}{61} = 0.01639 \text{ vs } \tfrac{1}{62} = 0.01613`, caption: 'a 1.6% gap, position matters, but gently' },
-        ],
-      },
-    ],
-    example: {
-      beforeLabel: 'Input rankings',
-      before: 'Dense:   A  B  C\nSparse:  B  D  A',
-      afterLabel: 'Fused (k = 60)',
-      after: 'B  0.03252   (ranks 2, 1)\nA  0.03226   (ranks 1, 3)\nD  0.01613   (rank 2 only)\nC  0.01587   (rank 3 only)',
-      mono: true,
-    },
     distinctions: [
       {
         title: 'Why not just average the scores?',
@@ -1245,7 +1230,7 @@ hybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
     concepts: [
       {
         id: 'rrf-props',
-        label: 'Why it works so well',
+        label: 'Why RRF works so well',
         kind: 'idea',
         summary: 'Scale-free, tuning-free, robust',
         detail: [
@@ -1255,22 +1240,12 @@ hybrid = EnsembleRetriever(retrievers=[dense, sparse], weights=[0.5, 0.5])`,
       },
       {
         id: 'rrf-limits',
-        label: 'What it gives up',
+        label: 'What RRF gives up',
         kind: 'tradeoff',
         summary: 'Discarding scores discards confidence',
         detail: [
           'Rank 1 with cosine 0.95 and rank 1 with cosine 0.31 are identical to RRF. When a retriever is genuinely certain, that information is thrown away.',
           'It also cannot express that one retriever is better than another for this query. A tuned weighted fusion beats RRF when you have per-query relevance labels to tune on, which most systems do not, which is why RRF is the default.',
-        ],
-      },
-      {
-        id: 'rrf-general',
-        label: 'Beyond two lists',
-        kind: 'method',
-        summary: 'Any number of rankers, same formula',
-        detail: [
-          'The sum runs over any number of lists, so RRF also merges multi-query branches, several embedding models, or per-field indexes, title, body, and summary each ranked separately.',
-          'A document absent from a list contributes zero rather than a penalty, so adding a weak ranker cannot actively hurt a document that other rankers liked. This monotonicity is what makes it safe to keep adding signals.',
         ],
       },
     ],
@@ -1749,6 +1724,34 @@ retriever = ContextualCompressionRetriever(
       },
     ],
     trace: { headline: 'Reordered by joint scoring', payload: 'A  0.94\nB  0.71\nD  0.44\nC  0.12', mono: true, note: 'A overtakes B once the model reads query and document together.' },
+  },
+
+  {
+    id: 'contextual-compression',
+    icon: 'compress',
+    label: 'Contextual Compression',
+    phase: 'online',
+    kind: 'optional',
+    ordinal: '7a',
+    tagline: 'Extract only the relevant sentences from retrieved chunks',
+    code: [
+      {
+        title: 'LangChain',
+        language: 'python',
+        code: `from langchain.retrievers import ContextualCompressionRetriever\nfrom langchain.retrievers.document_compressors import LLMChainExtractor\n\n# The compressor reads the chunk and extracts only sentences relevant to the query\ncompressor = LLMChainExtractor.from_llm(llm)\ncompression_retriever = ContextualCompressionRetriever(\n    base_compressor=compressor, \n    base_retriever=retriever\n)`,
+        note: 'Wraps any retriever. For every retrieved chunk, it calls an LLM to pull out the useful parts and discards the rest.',
+      },
+    ],
+    detail: [
+      'Even after reranking, the top chunks often contain a lot of noise. A 300-word paragraph might only contain one sentence that actually answers the query.',
+      'Contextual Compression passes each retrieved chunk through a small language model or cross-encoder specifically prompted to extract only the relevant information. This dramatically shrinks the context window required for the final generation step.',
+      'Unlike semantic dedup which drops redundant chunks, compression drops irrelevant text within the chunks themselves.',
+    ],
+    tradeoffs: {
+      gains: ['Massively reduces token usage in the final prompt', 'Less noise means fewer hallucinations'],
+      costs: ['Adds significant latency (an LLM call per retrieved chunk)', 'Risk of the compressor accidentally dropping nuance'],
+    },
+    trace: { headline: 'Context compressed', payload: 'Original: 5 chunks (1500 tokens)\nCompressed: 5 extracts (210 tokens)', mono: true, note: 'Only the relevant sentences survive to enter the prompt.' },
   },
 
   {

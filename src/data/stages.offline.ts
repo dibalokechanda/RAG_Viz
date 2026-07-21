@@ -706,6 +706,47 @@ retriever = ParentDocumentRetriever(
           costs: ['Two-tier bookkeeping', 'Parents can blow the context budget fast'],
         },
       },
+      {
+        id: 'contextual',
+        label: 'Contextual Retrieval',
+        tagline: 'Prepend a document summary to every chunk',
+        code: [
+          {
+            title: 'Prompt (Anthropic)',
+            language: 'text',
+            code: `<document>\n{{WHOLE_DOCUMENT}}\n</document>\nHere is the chunk we want to situate within the whole document:\n<chunk>\n{{CHUNK_CONTENT}}\n</chunk>\nPlease give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else.`,
+            note: 'The generated context is prepended to the chunk before embedding.',
+          },
+        ],
+        detail: [
+          'A chunk isolated from its document often loses the context needed to understand it. "The revenue grew 12% in Q3" is useless if it does not mention the company name.',
+          'Instead of hoping the embedding model figures it out, ask an LLM to read the whole document and write a 1-2 sentence context summary specifically for that chunk. Prepend the summary to the chunk, then embed the combined text.',
+        ],
+        tradeoffs: {
+          gains: ['Dramatically improves retrieval', 'Works with any embedding model'],
+          costs: ['Huge ingestion cost (an LLM call per chunk)'],
+        },
+      },
+      {
+        id: 'late-chunking',
+        label: 'Late Chunking',
+        tagline: 'Embed the whole document, then chunk the vectors',
+        detail: [
+          'Rather than splitting the text and embedding each piece independently, pass the entire document through a long-context embedding model. Then pool the token-level embeddings to produce vectors for each chunk.',
+          'Because the embedding model saw the whole document at once, the vector for a chunk containing just the word "Apple" knows whether the surrounding document is about fruit or computers.',
+        ],
+        example: {
+          beforeLabel: 'Traditional',
+          before: 'Split → Embed pieces',
+          afterLabel: 'Late Chunking',
+          after: 'Embed full document → Pool token vectors',
+          mono: true,
+        },
+        tradeoffs: {
+          gains: ['Preserves global context across chunk boundaries', 'Massive improvement in retrieval quality'],
+          costs: ['Requires embedding models that support late pooling (e.g. jina-embeddings-v2)'],
+        },
+      },
     ],
     distinctions: [
       {

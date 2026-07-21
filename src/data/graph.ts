@@ -126,6 +126,8 @@ export function activeOnlineStages(config: PipelineConfig): Stage[] {
         return config.rerank
       case 'context-window':
         return config.contextWindow
+      case 'contextual-compression':
+        return config.contextualCompression
       case 'retrieval-metrics':
         return config.retrievalMetrics
       case 'evaluation':

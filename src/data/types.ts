@@ -95,7 +95,7 @@ export interface CodeBlock {
   /** Framework label shown in the header, e.g. "LangChain". */
   title?: string
   /** Drives highlighting and the language tag. */
-  language: 'python' | 'bash'
+  language: 'python' | 'bash' | 'text'
   code: string
   /** One line under the block explaining what it shows. */
   note?: string
@@ -294,6 +294,7 @@ export interface PipelineConfig {
   rerank: boolean
   /** Token-budget fitting between ranking and prompt assembly. */
   contextWindow: boolean
+  contextualCompression: boolean
   retrievalMetrics: boolean
   evaluation: boolean
   /** Show the control-plane lane: triggers, policy, versioning, CI, fallback. */
@@ -313,6 +314,7 @@ export const defaultConfig: PipelineConfig = {
   dedup: true,
   rerank: true,
   contextWindow: true,
+  contextualCompression: false,
   retrievalMetrics: true,
   evaluation: true,
   platform: true,
