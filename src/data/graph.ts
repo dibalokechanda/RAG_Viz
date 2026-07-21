@@ -323,7 +323,7 @@ export function buildGraph({ config, activeStageId, visitedIds, selectedId }: Bu
   }
 
   // The one edge that joins the two halves.
-  link('index', 'retrieval', {
+  link('index-structure', 'retrieval', {
     type: 'join',
     sourceHandle: 'right',
     targetHandle: 'left',
