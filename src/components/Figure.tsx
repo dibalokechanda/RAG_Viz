@@ -516,10 +516,20 @@ export default function FigureView({ figure }: { figure: Figure }) {
       <Blocks f={figure} />
     )
 
+  const steps =
+    figure.kind === 'network' || figure.kind === 'layered' ? figure.steps : undefined
+
   return (
     <figure className="fig">
       {figure.title && <figcaption className="fig-title">{figure.title}</figcaption>}
       {body}
+      {steps && steps.length > 0 && (
+        <ol className="fig-steps">
+          {steps.map((s, i) => (
+            <li key={i}>{s}</li>
+          ))}
+        </ol>
+      )}
       {figure.caption && <div className="fig-caption">{figure.caption}</div>}
     </figure>
   )

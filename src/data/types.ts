@@ -180,6 +180,10 @@ export type Figure =
       links: { source: string; target: string }[]
       /** Sequence of node ids representing the search path to animate. */
       path?: string[]
+      /** Free-positioned text callouts drawn on the figure. */
+      annotations?: { x: number; y: number; text: string; anchor?: 'start' | 'middle' | 'end' }[]
+      /** Point-by-point walkthrough rendered as an ordered list under the figure. */
+      steps?: string[]
     }
   | {
       kind: 'layered'
@@ -190,6 +194,12 @@ export type Figure =
       links: { source: string; target: string; layer: number }[]
       /** Sequence of {node, layer} representing the search descent to animate. */
       path?: { node: string; layer: number }[]
+      /** Short description drawn to the right of each layer plane. */
+      layerLabels?: { layer: number; text: string }[]
+      /** Free-positioned text callouts drawn on the figure. */
+      annotations?: { x: number; y: number; text: string; anchor?: 'start' | 'middle' | 'end' }[]
+      /** Point-by-point walkthrough rendered as an ordered list under the figure. */
+      steps?: string[]
     }
 
 /**

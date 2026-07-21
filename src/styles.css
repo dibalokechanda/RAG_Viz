@@ -1443,6 +1443,134 @@ body {
   color: var(--text-faint);
 }
 
+/* Live similarity table under the greedy-search diagram. */
+.net-fig {
+  display: flex;
+  flex-direction: column;
+}
+
+.net-status {
+  margin: 12px 0 10px;
+  min-height: 32px;
+  padding: 7px 11px;
+  border-left: 2px solid var(--ink);
+  background: var(--surface-sunken);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.net-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+}
+
+.net-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-faint);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.net-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+  vertical-align: middle;
+}
+
+.net-table td:first-child {
+  width: 74px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.net-table td:nth-child(2) {
+  position: relative;
+}
+
+/* Similarity bar sits behind the value. */
+.net-bar {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 15px;
+  background: var(--surface-hover);
+  border-radius: 3px;
+  transition: width 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+}
+
+.net-val {
+  position: relative;
+  z-index: 1;
+  color: var(--text-dim);
+}
+
+.net-table tr.is-chosen td {
+  color: #185c39;
+}
+
+.net-table tr.is-chosen td:first-child {
+  color: #185c39;
+}
+
+.net-table tr.is-chosen .net-bar {
+  background: #cfe6d8;
+}
+
+.net-table tr.is-chosen .net-val {
+  color: #185c39;
+  font-weight: 700;
+}
+
+/* Point-by-point walkthrough under a diagram. */
+.fig-steps {
+  margin: 18px 0 0;
+  padding: 16px 0 0 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+  counter-reset: figstep;
+}
+
+.fig-steps li {
+  counter-increment: figstep;
+  position: relative;
+  padding-left: 30px;
+  margin-bottom: 11px;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.fig-steps li:last-child {
+  margin-bottom: 0;
+}
+
+.fig-steps li::before {
+  content: counter(figstep);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+
 /* ─────────────────────────── Concept map ─────────────────────────── */
 
 .map-btn {

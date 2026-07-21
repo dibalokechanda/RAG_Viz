@@ -109,26 +109,37 @@ export default function FigureD3Layered({ f }: { f: Extract<Figure, { kind: 'lay
     }
   }, [f])
 
+  const maxLayer = Math.max(...f.layers)
+
   return (
-    <svg ref={svgRef} viewBox="0 0 400 260" width="100%" className="fig-svg">
+    <svg ref={svgRef} viewBox="0 0 470 270" width="100%" className="fig-svg">
       {/* Draw Layer Planes */}
       {f.layers.map(layer => {
         const y = getCy(layer)
+        const desc = f.layerLabels?.find(l => l.layer === layer)?.text
         return (
           <g key={`plane-${layer}`}>
             {/* Plane background to give depth */}
-            <polygon 
-              points={`20,${y + 15} 380,${y + 15} 360,${y - 25} 40,${y - 25}`} 
-              fill="var(--surface-hover)" 
-              opacity="0.3" 
+            <polygon
+              points={`20,${y + 15} 380,${y + 15} 360,${y - 25} 40,${y - 25}`}
+              fill="var(--surface-hover)"
+              opacity="0.3"
             />
-            <text x="10" y={y + 5} fontSize="11" fontFamily="var(--mono)" fill="var(--text-faint)">
+            <text x="10" y={y + 4} fontSize="12" fontWeight="600" fontFamily="var(--mono)" fill="var(--ink)">
               L{layer}
             </text>
+            {/* Short description of this layer, in the right gutter. */}
+            {desc && (
+              <text x="388" y={y - 3} fontSize="9.5" fontFamily="var(--mono)" fill="var(--text-faint)">
+                {desc.split('\n').map((line, li) => (
+                  <tspan key={li} x="388" dy={li === 0 ? 0 : 12}>{line}</tspan>
+                ))}
+              </text>
+            )}
           </g>
         )
       })}
-      
+
       {/* Draw Links */}
       {f.links.map(l => {
         const source = f.nodes.find(n => n.id === l.source)
@@ -165,15 +176,47 @@ export default function FigureD3Layered({ f }: { f: Extract<Figure, { kind: 'lay
                 stroke={n.isTarget ? "#a32a2a" : "var(--border-strong)"}
                 strokeWidth="1.5"
               />
-              {n.isEntry && layer === Math.max(...f.layers) && (
-                <text x={n.x} y={getCy(layer) - 10} fontSize="10" fontFamily="var(--mono)" fill="var(--text-faint)" textAnchor="middle">
-                  enter
+              {n.isEntry && layer === maxLayer && (
+                <text x={n.x} y={getCy(layer) - 11} fontSize="10" fontFamily="var(--mono)" fill="var(--text-faint)" textAnchor="middle">
+                  entry point
+                </text>
+              )}
+              {n.isTarget && layer === 0 && (
+                <text x={n.x} y={getCy(layer) - 10} fontSize="10.5" fontFamily="var(--mono)" fill="#a32a2a" textAnchor="middle">
+                  query
                 </text>
               )}
             </g>
           ))}
         </g>
       ))}
+
+      {/* Callouts */}
+      {f.annotations?.map((a, i) => (
+        <text
+          key={`ann-${i}`}
+          x={a.x}
+          y={a.y}
+          fontSize="9.5"
+          fontFamily="var(--mono)"
+          fill="var(--text-faint)"
+          textAnchor={a.anchor ?? 'start'}
+        >
+          {a.text}
+        </text>
+      ))}
+
+      {/* Legend */}
+      <g transform="translate(12, 258)">
+        <line x1="0" y1="0" x2="18" y2="0" stroke="var(--ink)" strokeWidth="2.5" />
+        <text x="24" y="3.5" fontSize="9.5" fontFamily="var(--mono)" fill="var(--text-dim)">
+          hop within a layer
+        </text>
+        <line x1="150" y1="-5" x2="150" y2="5" stroke="var(--ink)" strokeWidth="2.5" strokeDasharray="4 3" />
+        <text x="160" y="3.5" fontSize="9.5" fontFamily="var(--mono)" fill="var(--text-dim)">
+          descend one layer
+        </text>
+      </g>
     </svg>
   )
 }

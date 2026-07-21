@@ -1115,8 +1115,13 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
         id: 'hnsw',
         label: 'HNSW',
         tagline: 'Hierarchical navigable small-world graph',
-        detail:
-          'A multi-layer proximity graph. Each vector is inserted with a randomly chosen maximum layer, so upper layers are sparse and lower layers dense. Search enters at the top, greedily walks toward the query, then descends, long hops first, fine refinement last.',
+        detail: [
+          '**A small-world graph.** Most links connect near neighbours, but a few are long-range shortcuts. That mix lets any node reach any other in a handful of hops, the same property social networks have.',
+          '**Navigable by greedy search.** From the current node, look at its neighbours and jump to whichever is closest to the query. Repeat until no neighbour is closer. That stopping point is a *local minimum*, and on a well-built graph it is the true nearest neighbour. The first diagram below animates exactly this walk.',
+          '**A hierarchy of graphs, the probability skip list.** Each vector is assigned a random maximum layer whose probability decays exponentially, so the top layer holds only a few nodes and each layer down holds roughly *e* times more. The base layer L0 holds every node.',
+          '**Sparse on top, dense at the bottom.** Upper layers have few nodes and long links, for crossing the space fast. Lower layers have many nodes and short links, for fine refinement.',
+          '**Search descends layer by layer.** Enter at the sparse top, greedily hop to a local minimum, then drop to the same node one layer down and hop again. Long coarse hops first, short precise hops last, which is what gives the O(log N) cost. The second diagram animates this descent.',
+        ],
         math: [
           {
             title: 'Layer assignment',
@@ -1144,37 +1149,56 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
         figures: [
           {
             kind: 'network',
-            title: 'NSW Greedy Search',
-            caption: 'At each node, the search evaluates all neighbours and hops to the one closest to the query, stopping when it reaches a local minimum.',
+            title: 'Step 1 · Greedy search, scored live',
             nodes: [
-              { id: 'start', x: 40, y: 180, isEntry: true },
-              { id: 'n1', x: 120, y: 150 },
-              { id: 'n2', x: 180, y: 90 },
-              { id: 'n3', x: 250, y: 130 },
-              { id: 'n4', x: 290, y: 50 },
-              { id: 'n5', x: 330, y: 100 },
-              { id: 'target', x: 370, y: 70, isTarget: true }
+              { id: 'entry', x: 38, y: 168, isEntry: true },
+              { id: 'a', x: 95, y: 120 },
+              { id: 'b', x: 108, y: 188 },
+              { id: 'c', x: 168, y: 88 },
+              { id: 'd', x: 178, y: 158 },
+              { id: 'e', x: 238, y: 128 },
+              { id: 'f', x: 250, y: 60 },
+              { id: 'g', x: 300, y: 110 },
+              { id: 'h', x: 320, y: 168 },
+              { id: 'k', x: 335, y: 70 },
+              { id: 'query', x: 366, y: 52, isTarget: true, label: 'query' }
             ],
             links: [
-              { source: 'start', target: 'n1' },
-              { source: 'n1', target: 'n2' },
-              { source: 'n2', target: 'n3' },
-              { source: 'n2', target: 'n4' },
-              { source: 'n4', target: 'n5' },
-              { source: 'n5', target: 'target' },
-              { source: 'start', target: 'n2' },
-              { source: 'n1', target: 'n3' },
-              { source: 'n3', target: 'n5' },
-              { source: 'n3', target: 'target' },
-              { source: 'n4', target: 'target' }
+              { source: 'entry', target: 'a' },
+              { source: 'entry', target: 'b' },
+              { source: 'a', target: 'c' },
+              { source: 'a', target: 'd' },
+              { source: 'a', target: 'e' },
+              { source: 'b', target: 'd' },
+              { source: 'c', target: 'd' },
+              { source: 'c', target: 'f' },
+              { source: 'd', target: 'e' },
+              { source: 'e', target: 'f' },
+              { source: 'e', target: 'g' },
+              { source: 'f', target: 'g' },
+              { source: 'f', target: 'k' },
+              { source: 'g', target: 'h' },
+              { source: 'g', target: 'k' },
+              { source: 'h', target: 'k' }
             ],
-            path: ['start', 'n2', 'n4', 'target']
+            steps: [
+              'The pulsing ring marks the node the search is currently sitting on.',
+              'The table scores every neighbour by similarity to the query (higher is closer).',
+              'The best-scoring neighbour, and its node, are highlighted.',
+              'The search hops there, then repeats, until no neighbour beats the current node: the local minimum, and the answer.',
+            ],
+            caption:
+              'Similarity here is a stand-in for cosine similarity to the query vector. The walk never backtracks because each hop strictly increases similarity; a few long-range "small-world" edges are what let it cross the space in only four hops.',
           },
           {
             kind: 'layered',
-            title: 'HNSW Probability Skip List',
-            caption: 'Layers are constructed exponentially. Search enters at the highest layer L2, hops to the local minimum, drops to L1, hops to the new local minimum, and so on until the base layer L0.',
+            title: 'Step 2 · Descending the layer hierarchy',
             layers: [2, 1, 0],
+            layerLabels: [
+              { layer: 2, text: 'sparsest\nlong hops' },
+              { layer: 1, text: 'denser\nshorter hops' },
+              { layer: 0, text: 'all N nodes\nfinest search' },
+            ],
             nodes: [
               { id: 'nA', x: 80, y: 0, maxLayer: 2, isEntry: true },
               { id: 'nB', x: 220, y: 0, maxLayer: 2 },
@@ -1185,7 +1209,7 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
               { id: 'nG', x: 180, y: 0, maxLayer: 0 },
               { id: 'nH', x: 260, y: 0, maxLayer: 0 },
               { id: 'nI', x: 330, y: 0, maxLayer: 0 },
-              { id: 'target', x: 350, y: 0, maxLayer: 0, isTarget: true }
+              { id: 'target', x: 355, y: 0, maxLayer: 0, isTarget: true }
             ],
             links: [
               { source: 'nA', target: 'nB', layer: 2 },
@@ -1208,8 +1232,18 @@ full  = OpenAIEmbeddings(model="text-embedding-3-large", dimensions=3072)
               { node: 'nB', layer: 1 },
               { node: 'nD', layer: 1 },
               { node: 'nD', layer: 0 },
+              { node: 'nI', layer: 0 },
               { node: 'target', layer: 0 }
-            ]
+            ],
+            steps: [
+              'Enter at the top layer, which holds only a few nodes joined by long links.',
+              'Greedily hop toward the query until no neighbour on this layer is closer.',
+              'Drop straight down to the same node one layer below (the dashed line).',
+              'Each lower layer is denser, so hops get shorter and more precise.',
+              'On the base layer L0, which holds every node, the final walk reaches the query.',
+            ],
+            caption:
+              'The same greedy search as above, run once per layer. Starting sparse and finishing dense is what turns a linear scan into a logarithmic one: the early layers throw away most of the graph in a few long hops.',
           }
         ],
         tradeoffs: {
