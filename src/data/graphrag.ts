@@ -305,47 +305,56 @@ the data references [Data: Reports (2, 7, 34)].`
  * refinement loop of local searches over the follow-up questions it raised.
  */
 
-export const DRIFT_FLOW = `# 1. HyDE
-#    The query is not embedded directly. The model first writes a
-#    *hypothetical* answer, the kind of document the graph would already
-#    contain, and that document is embedded instead. It sits closer in
-#    vector space to real corpus text than a bare question does.
+export const DRIFT_FLOW = `# 1. Retrieve the primer's community reports
+#    The query is embedded and looked up against the embedded community
+#    reports; the top-k most similar come back. Microsoft's announcement
+#    describes expanding the query with HyDE first, writing a hypothetical
+#    answer, on the reasoning that a written passage sits closer in vector
+#    space to real corpus text than a bare question does. The docs site
+#    describes only the embed-and-look-up half.
 
-hyde_doc = llm.invoke(f"Write a passage answering: {query}")
-q_vec    = embed(hyde_doc)
+q_vec   = embed(hyde_expand(query))
+reports = community_vectors.search(q_vec, k=drift_k_followups)
 
-# 2. Primer: a lightweight global search
-#    Retrieve the top-k community reports nearest q_vec, and from them
-#    produce an initial answer plus a set of follow-up questions.
+# 2. Primer
+#    Those reports produce a broad initial answer plus a set of follow-up
+#    questions. This is global-STYLE, not a run of global search: it reads
+#    a handful of reports rather than mapping over all of them, which is
+#    exactly why it costs a fraction of the price.
 
-reports        = community_vectors.search(q_vec, k=k)
-primer         = llm.invoke(PRIMER_PROMPT, reports=reports)
-answer_0       = primer["answer"]
-follow_ups     = primer["follow_up_questions"]
+primer     = llm.invoke(PRIMER_PROMPT, reports=reports)
+answer_0   = primer["answer"]
+follow_ups = primer["follow_up_questions"]
 # e.g. ["What are the memory costs of QLoRA vs LoRA?",
 #       "Which evaluation metrics distinguish the two?", ...]
 
-# 3. Refinement loop: a local search per follow-up
-#    Each local search is informed by BOTH community-level knowledge and
-#    entity/relationship detail, and each one emits its own intermediate
-#    answer and its own new follow-ups.
+# 3. Refinement loop
+#    Each follow-up drives a local-STYLE retrieval: entity and relationship
+#    detail augmented with community context, carrying state between rounds
+#    rather than re-invoking standalone local search. Each returns an
+#    intermediate answer and its own new follow-ups.
 
-for _ in range(2):                       # two iterations, fixed
+for _ in range(n_depth):                 # configurable, not fixed at two
     for q in follow_ups:
-        node        = local_search(q)    # entities + rels + source chunks
+        node        = drift_local_step(q, state)
         answers    += [node.answer]
         next_round += node.follow_up_questions
     follow_ups = next_round
 
-# 4. Reduce
+# 4. Synthesis
 #    The result is a hierarchy of question/answer nodes ranked by relevance
-#    to the original query. Map-reduce again, weighting every intermediate
-#    answer equally, then one final synthesis call.
+#    to the original query, reduced into one response. This is a final
+#    synthesis over that hierarchy, not the map-reduce global search runs.
+#    (Microsoft describe a naive map-reduce over equally weighted answers
+#    during benchmark testing.)
 
 final = llm.invoke(REDUCE_PROMPT, answers=answers)
 
-# Two iterations is a hard-coded stopping rule. Microsoft note that a
-# learned reward function for smarter termination is future work.`
+# Depth is a config value: n_depth, with drift_k_followups and
+# primer_folds alongside it. The original announcement said the loop was
+# "currently configured for two iterations"; the shipped library exposes
+# the setting, and Microsoft's own example notebook uses n_depth=3.
+# A learned reward function for smarter termination is still future work.`
 
 export const DRIFT_OUTPUT = `SUCCESS: DRIFT Search Response:
 

@@ -1032,11 +1032,11 @@ export default function GraphRAGViz({ stage }: { stage: StageKey }) {
       {stage === 'drift' &&
         (() => {
           const steps = [
-            { k: 'HyDE', t: 'Write a hypothetical answer, embed that', s: 'a fake passage sits closer to corpus text than a question does' },
-            { k: 'PRIMER', t: 'Top-k community reports → first answer', s: 'a lightweight global search, and a set of follow-up questions' },
-            { k: 'EXPAND', t: 'One local search per follow-up', s: 'entities, relationships and source chunks, plus the reports' },
-            { k: 'LOOP', t: 'Each answer raises new follow-ups', s: 'two iterations, a fixed stopping rule' },
-            { k: 'REDUCE', t: 'Map-reduce the whole Q/A tree', s: 'every intermediate answer weighted equally, one final call' },
+            { k: 'RETRIEVE', t: 'Embed the query, match community reports', s: 'top-k by similarity; HyDE expansion raises recall' },
+            { k: 'PRIMER', t: 'Those reports give a first answer', s: 'plus follow-up questions. Global-style, not global search' },
+            { k: 'EXPAND', t: 'Each follow-up drives a local-style search', s: 'entity detail plus community context, state carried over' },
+            { k: 'LOOP', t: 'Each answer raises new follow-ups', s: 'depth set by n_depth, not fixed at two' },
+            { k: 'SYNTHESISE', t: 'Rank and reduce the Q/A hierarchy', s: 'one response over all intermediate answers' },
           ]
           const active = sub % steps.length
           return (
@@ -1083,7 +1083,7 @@ export default function GraphRAGViz({ stage }: { stage: StageKey }) {
               </path>
               <path d="M 42 253 l 4 -6 l 5 5" fill="none" stroke={ACCENT} strokeWidth="1.3" />
               <text x={31} y={288} fontSize="6.8" fontFamily="var(--mono)" fill={ACCENT} textAnchor="middle" transform="rotate(-90 31 288)">
-                ×2
+                n_depth
               </text>
 
               {/* which level of the graph each phase reads */}

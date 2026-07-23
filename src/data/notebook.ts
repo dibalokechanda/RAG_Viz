@@ -377,7 +377,7 @@ print(result)`,
   drift: [
     {
       n: 15,
-      explain: "Same question a third time. DRIFT starts global, with a HyDE-written hypothetical answer matched against community reports to produce a primer, then runs a local search per follow-up question the primer raised, twice. The answer keeps the broad framing of the global result but carries the concrete detail of the local one, which is the point of combining them.",
+      explain: "Same question a third time. DRIFT starts global-style, matching the query against the embedded community reports to retrieve a top-k primer, then drives a local-style search from each follow-up question the primer raised, for `n_depth` rounds. The answer keeps the broad framing of the global result while carrying the concrete detail of the local one, which is the whole point of combining them.",
       needs: 'query_graphrag',
       code: `result = query_graphrag(
     query="How does a company choose between RAG, fine-tuning, "
