@@ -21,6 +21,27 @@ import { JoinEdge, PipelineEdge } from './components/edges'
 import DetailPanel from './components/DetailPanel'
 import ControlRail from './components/ControlRail'
 import GraphRAGView from './components/GraphRAGView'
+import Walkthrough from './components/Walkthrough'
+import VariantViz from './components/VariantViz'
+import { LAZY_TRACK, LIGHT_TRACK, PATH_TRACK } from './data/variants'
+
+/* Vanilla RAG is its own screen; the four graph methods all run on the shared
+   walkthrough shell, so adding one is a track plus a set of scenes. */
+type ViewKey = 'rag' | 'graphrag' | 'lazy' | 'light' | 'path'
+
+const VARIANTS = {
+  lazy: LAZY_TRACK,
+  light: LIGHT_TRACK,
+  path: PATH_TRACK,
+} as const
+
+const TABS: { key: ViewKey; label: string }[] = [
+  { key: 'rag', label: 'Vanilla RAG' },
+  { key: 'graphrag', label: 'GraphRAG' },
+  { key: 'lazy', label: LAZY_TRACK.label },
+  { key: 'light', label: LIGHT_TRACK.label },
+  { key: 'path', label: PATH_TRACK.label },
+]
 
 const nodeTypes = { stage: StageNode, lane: LaneLabel }
 const edgeTypes = { pipeline: PipelineEdge, join: JoinEdge }
@@ -38,7 +59,7 @@ function Canvas() {
   // toggles, so tracking resize buys nothing.
   const [narrow] = useState(() => window.matchMedia('(max-width: 860px)').matches)
   const [mapOpen, setMapOpen] = useState(false)
-  const [view, setView] = useState<'rag' | 'graphrag'>('rag')
+  const [view, setView] = useState<ViewKey>('rag')
   const { setCenter, fitView } = useReactFlow()
 
   const { nodes, edges } = useMemo(
@@ -138,22 +159,17 @@ function Canvas() {
           )}
           <h1>RAG Pipeline</h1>
           <div className="view-tabs" role="tablist">
-            <button
-              role="tab"
-              aria-selected={view === 'rag'}
-              className={view === 'rag' ? 'on' : ''}
-              onClick={() => setView('rag')}
-            >
-              Vanilla RAG
-            </button>
-            <button
-              role="tab"
-              aria-selected={view === 'graphrag'}
-              className={view === 'graphrag' ? 'on' : ''}
-              onClick={() => setView('graphrag')}
-            >
-              GraphRAG
-            </button>
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={view === t.key}
+                className={view === t.key ? 'on' : ''}
+                onClick={() => setView(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
           <div className="topbar-spacer" />
           {view === 'rag' && (
@@ -173,6 +189,8 @@ function Canvas() {
 
         {view === 'graphrag' ? (
           <GraphRAGView />
+        ) : view !== 'rag' ? (
+          <Walkthrough track={VARIANTS[view]} renderScene={(key) => <VariantViz stage={key} />} />
         ) : (
           <div className="workspace">
             <ControlRail collapsed={railCollapsed} />

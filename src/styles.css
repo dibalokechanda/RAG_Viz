@@ -3076,3 +3076,37 @@ body {
     flex-basis: 100%;
   }
 }
+
+/* ───────────── Source line in the walkthrough panel ───────────── */
+.gr-source {
+  margin: 22px 0 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+.gr-source a {
+  color: var(--text-dim);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.gr-source a:hover { color: var(--ink); }
+
+/* Five tabs no longer fit every width, so the strip scrolls rather than
+   wrapping the topbar to two rows. */
+.view-tabs {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  flex-wrap: nowrap;
+}
+.view-tabs::-webkit-scrollbar { display: none; }
+.view-tabs button { flex: 0 0 auto; white-space: nowrap; }
+
+@media (max-width: 1180px) {
+  .view-tabs button { padding: 6px 13px; font-size: var(--fs-xs); }
+}
+@media (max-width: 860px) {
+  .topbar h1 { display: none; }
+  .view-tabs { margin-right: 4px; }
+}

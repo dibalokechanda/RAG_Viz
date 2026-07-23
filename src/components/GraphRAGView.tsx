@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
 import GraphRAGViz, { type StageKey } from './GraphRAGViz'
+import Walkthrough from './Walkthrough'
+import type { Stage, Track } from '../data/walkthrough'
 import {
   CHUNKING,
   EXTRACTION_OUTPUT,
@@ -17,34 +17,6 @@ import {
   DRIFT_OUTPUT,
 } from '../data/graphrag'
 import { NOTEBOOK, NOTEBOOK_REPO, NOTEBOOK_TOTAL } from '../data/notebook'
-import NotebookModal from './NotebookModal'
-
-interface Card {
-  label: string
-  /** right-aligned note in the card header, saying what this text actually is */
-  hint: string
-  body: string
-}
-/* A panel entry is either a plain paragraph (framing, caveats, cost notes) or
-   a numbered step. Keeping both in one ordered list lets a stage open with
-   context, walk the steps, and close with the consequence. */
-interface Step {
-  step: number
-  title: string
-  body: string
-}
-type Note = string | Step
-const isStep = (n: Note): n is Step => typeof n !== 'string'
-
-interface Stage {
-  key: StageKey
-  group: 'index' | 'search'
-  chip: string
-  title: string
-  caption: string
-  panel: Note[]
-  cards?: Card[]
-}
 
 const STAGES: Stage[] = [
   {
@@ -210,153 +182,19 @@ const STAGES: Stage[] = [
   },
 ]
 
+export const GRAPHRAG_TRACK: Track = {
+  label: 'GraphRAG',
+  tagline: 'Extracts a graph, clusters it, and pre-writes a summary of every community.',
+  stages: STAGES,
+  source: { name: 'Microsoft GraphRAG', url: 'https://microsoft.github.io/graphrag/' },
+}
+
 export default function GraphRAGView() {
-  const [idx, setIdx] = useState(0)
-  const [playing, setPlaying] = useState(true)
-  const [cardTab, setCardTab] = useState(0)
-  const [nbOpen, setNbOpen] = useState(false)
-  const stage = STAGES[idx]
-  const cells = NOTEBOOK[stage.key] ?? []
-  const barRef = useRef<HTMLDivElement>(null)
-
-  // On mobile the stage bar is a horizontal strip, so autoplay (and any jump
-  // to a later stage) would otherwise move the selection off-screen. Centre it.
-  // On desktop the bar wraps instead of scrolling, so this is a no-op.
-  useEffect(() => {
-    const bar = barRef.current
-    const chip = bar?.querySelector<HTMLElement>('.gr-chip.on')
-    if (!bar || !chip) return
-    // Left-align to match scroll-snap-align: start, so the programmatic
-    // scroll and the snap points agree and the chip lands whole.
-    bar.scrollTo({ left: Math.max(0, chip.offsetLeft - 2), behavior: 'smooth' })
-  }, [idx])
-
-  useEffect(() => {
-    setCardTab(0)
-    setNbOpen(false)
-  }, [idx])
-  useEffect(() => {
-    if (!playing) return
-    const t = window.setTimeout(() => setIdx((i) => (i + 1) % STAGES.length), 9000)
-    return () => clearTimeout(t)
-  }, [idx, playing])
-
-  const go = (i: number) => {
-    setIdx(i)
-    setPlaying(false)
-  }
-
   return (
-    <div className="graphrag-view">
-      <div className="gr-main">
-        <div className="gr-stagebar">
-          <button className="gr-play" onClick={() => setPlaying((p) => !p)} title={playing ? 'Pause' : 'Play'}>
-            {playing ? '❚❚' : '▶'}
-          </button>
-          <div className="gr-groups" ref={barRef}>
-          {/* Each group is its own nowrap row, so the bar breaks between
-              Indexing and Search rather than through the middle of one. */}
-          <div className="gr-group">
-            <span className="gr-grouplabel">Indexing</span>
-            {STAGES.filter((s) => s.group === 'index').map((s) => (
-              <button key={s.key} className={`gr-chip ${s.key === stage.key ? 'on' : ''}`} onClick={() => go(STAGES.indexOf(s))}>
-                {s.chip}
-              </button>
-            ))}
-          </div>
-          <div className="gr-group">
-            <span className="gr-grouplabel">Search</span>
-            {STAGES.filter((s) => s.group === 'search').map((s) => (
-              <button key={s.key} className={`gr-chip search ${s.key === stage.key ? 'on' : ''}`} onClick={() => go(STAGES.indexOf(s))}>
-                {s.chip}
-              </button>
-            ))}
-          </div>
-          </div>
-        </div>
-
-        <div className="gr-canvas">
-          <GraphRAGViz stage={stage.key} />
-        </div>
-        <p className="gr-swipe">Swipe the diagram sideways to see all of it</p>
-
-        <div className="gr-caption">{stage.caption}</div>
-
-        {stage.cards && (
-          <div className="gr-card">
-            <div className="gr-card-head">
-              {stage.cards.map((c, i) => (
-                <button key={c.label} className={`gr-card-tab ${i === cardTab ? 'on' : ''}`} onClick={() => setCardTab(i)}>
-                  {c.label}
-                </button>
-              ))}
-              <span className="gr-card-hint">{stage.cards[cardTab]?.hint}</span>
-            </div>
-            <pre className="gr-card-body">{stage.cards[cardTab]?.body}</pre>
-          </div>
-        )}
-      </div>
-
-      <aside className="gr-panel">
-        <div className="gr-panel-head">
-          <span className={`gr-badge ${stage.group}`}>{stage.group === 'index' ? 'Indexing · offline' : 'Query time'}</span>
-          <h3>{stage.title}</h3>
-        </div>
-        <div className="gr-panel-body">
-          {stage.panel.map((p, i) =>
-            isStep(p) ? (
-              <div className={`gr-step ${stage.group === 'search' ? 'search' : ''}`} key={i}>
-                <span className="gr-step-n">{p.step}</span>
-                <div className="gr-step-text">
-                  <h4>{p.title}</h4>
-                  <div className="markdown-content">
-                    <ReactMarkdown>{p.body}</ReactMarkdown>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="markdown-content gr-para" key={i}>
-                <ReactMarkdown>{p}</ReactMarkdown>
-              </div>
-            ),
-          )}
-
-          {cells.length > 0 && (
-            <section className="gr-nb">
-              <button className="gr-nb-open" onClick={() => setNbOpen(true)}>
-                <span className="gr-nb-open-icon">{'{ }'}</span>
-                <span className="gr-nb-open-text">
-                  <strong>Open the notebook</strong>
-                  <em>
-                    {cells.length === 1 ? `Cell ${cells[0].n}` : `Cells ${cells[0].n}–${cells[cells.length - 1].n}`} of{' '}
-                    {NOTEBOOK_TOTAL}, runnable, with the captured output
-                  </em>
-                </span>
-                <span className="gr-nb-open-arrow">↗</span>
-              </button>
-              <p className="gr-nb-lede">
-                One kernel running top to bottom across all nine stages, from {NOTEBOOK_REPO}.
-              </p>
-            </section>
-          )}
-
-          <div className="gr-nav">
-            <button disabled={idx === 0} onClick={() => go(idx - 1)}>
-              ‹ Prev
-            </button>
-            <span>
-              {idx + 1} / {STAGES.length}
-            </span>
-            <button disabled={idx === STAGES.length - 1} onClick={() => go(idx + 1)}>
-              Next ›
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {nbOpen && cells.length > 0 && (
-        <NotebookModal cells={cells} stageTitle={stage.title} onClose={() => setNbOpen(false)} />
-      )}
-    </div>
+    <Walkthrough
+      track={GRAPHRAG_TRACK}
+      renderScene={(key) => <GraphRAGViz stage={key as StageKey} />}
+      notebook={{ cells: NOTEBOOK, repo: NOTEBOOK_REPO, total: NOTEBOOK_TOTAL, stageCount: STAGES.length }}
+    />
   )
 }
