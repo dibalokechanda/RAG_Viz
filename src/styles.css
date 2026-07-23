@@ -2399,6 +2399,89 @@ body {
   border-radius: 4px;
 }
 
+/* A numbered step in the right panel. The rail down the left ties the steps
+   into one sequence, so a stage reads as an ordered procedure rather than a
+   stack of independent paragraphs. */
+.gr-step {
+  display: flex;
+  gap: 13px;
+  position: relative;
+  padding-bottom: 18px;
+}
+.gr-step::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 26px;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--border);
+}
+.gr-step:last-of-type::before {
+  display: none;
+}
+.gr-step-n {
+  flex: 0 0 auto;
+  width: 25px;
+  height: 25px;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-mint);
+  color: #2f6f4e;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  z-index: 1;
+}
+.gr-step.search .gr-step-n {
+  background: #f3dfe1;
+  color: #a32a2a;
+}
+.gr-step-text {
+  min-width: 0;
+  padding-top: 1px;
+}
+.gr-step-text h4 {
+  margin: 0 0 5px;
+  font-family: var(--sans);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+.gr-step-text .markdown-content {
+  font-size: var(--fs-sm);
+  line-height: 1.72;
+  color: var(--text-dim);
+}
+.gr-step-text .markdown-content p {
+  margin: 0;
+}
+.gr-step-text .markdown-content strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.gr-step-text .markdown-content code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: var(--surface-hover);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* The framing line above the steps and the consequence below them. */
+.gr-para + .gr-step {
+  padding-top: 4px;
+}
+.gr-step + .gr-para {
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
 .gr-nav {
   display: flex;
   align-items: center;
