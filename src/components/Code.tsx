@@ -27,7 +27,7 @@ const PY_RE = new RegExp(
 
 const BASH_RE = /(#.*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g
 
-function highlight(code: string, language: CodeBlock['language']): ReactNode[] {
+export function highlight(code: string, language: CodeBlock['language']): ReactNode[] {
   const re = language === 'bash' ? BASH_RE : PY_RE
   const out: ReactNode[] = []
   let last = 0

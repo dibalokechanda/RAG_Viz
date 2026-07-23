@@ -2145,3 +2145,851 @@ body {
   color: var(--text-dark);
 }
 
+
+/* ─────────────────────────── View tabs (topbar) ─────────────────────────── */
+.view-tabs {
+  display: flex;
+  gap: 3px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+}
+.view-tabs button {
+  font-family: var(--sans);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  padding: 6px 18px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.view-tabs button:hover { color: var(--ink); }
+.view-tabs button.on {
+  background: var(--ink);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(19, 37, 27, 0.25);
+}
+
+/* ─────────────────────────── GraphRAG view ─────────────────────────── */
+.graphrag-view {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  background:
+    radial-gradient(120% 90% at 12% 0%, #f6f3ec 0%, rgba(246, 243, 236, 0) 60%),
+    var(--bg);
+}
+
+.gr-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 24px 20px;
+  overflow-y: auto;
+  gap: 11px;
+}
+
+/* stage bar */
+.gr-stagebar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+/* Holds both groups. Kept separate from .gr-stagebar so the play button is a
+   sibling of the scroller on mobile, never something chips slide underneath. */
+.gr-groups {
+  /* positioned so a chip's offsetLeft is measured against this scroller,
+     which is what the active-chip scrollTo assumes */
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 7px;
+  min-width: 0;
+}
+.gr-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: nowrap;
+}
+.gr-grouplabel {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-right: 2px;
+}
+.gr-chip {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 8px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 160ms cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  box-shadow: var(--shadow-xs);
+}
+.gr-chip:hover { border-color: var(--ink); color: var(--ink); transform: translateY(-1px); }
+.gr-chip.on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(19, 37, 27, 0.22);
+}
+.gr-chip.search { border-style: dashed; }
+.gr-chip.search.on { border-style: solid; background: #a32a2a; border-color: #a32a2a; }
+.gr-play {
+  width: 34px;
+  height: 34px;
+  margin-top: 1px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 9px;
+  flex: 0 0 auto;
+  box-shadow: var(--shadow-xs);
+}
+.gr-play:hover { border-color: var(--ink); color: var(--ink); }
+
+/* canvas */
+.gr-canvas {
+  flex: 0 0 auto;
+  background: linear-gradient(168deg, #ffffff 0%, #fdfcfa 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  padding: 6px 8px;
+}
+.gr-svg { display: block; width: 100%; overflow: visible; }
+
+.gr-swipe {
+  display: none;
+  margin: -4px 0 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.gr-caption {
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  color: var(--text-dim);
+  padding-left: 14px;
+  border-left: 2px solid var(--ink);
+}
+
+/* bottom prompt / output card */
+.gr-card {
+  background: #12211a;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.gr-card-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.gr-card-tab {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8ea297;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.gr-card-tab:hover { color: #d7e3dc; }
+.gr-card-tab.on { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.gr-card-hint {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6d8177;
+  padding-right: 6px;
+}
+.gr-card-body {
+  margin: 0;
+  padding: 16px 18px 18px;
+  font-family: var(--mono);
+  font-size: 11.6px;
+  line-height: 1.62;
+  color: #cfdcd5;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 176px;
+  overflow-y: auto;
+}
+
+/* right panel */
+.gr-panel {
+  width: 470px;
+  flex: 0 0 470px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.gr-panel-head {
+  padding: 26px 30px 20px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 2;
+}
+.gr-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-mint);
+  color: #2f6f4e;
+}
+.gr-badge.search { background: #f3dfe1; color: #a32a2a; }
+.gr-panel-head h3 {
+  margin: 12px 0 0;
+  font-family: var(--serif);
+  font-size: 25px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.gr-panel-body { padding: 22px 30px 48px; }
+.gr-para {
+  font-size: var(--fs-sm);
+  line-height: 1.75;
+  color: var(--text-dim);
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border);
+}
+.gr-para:last-of-type { border-bottom: none; }
+.gr-para strong { color: var(--text); font-weight: 600; }
+.gr-para code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: var(--surface-hover);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.gr-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.gr-nav button {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 150ms;
+}
+.gr-nav button:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.gr-nav button:disabled { opacity: 0.35; cursor: default; }
+.gr-nav span {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-left: auto;
+}
+
+@media (max-width: 1400px) {
+  .gr-panel { width: 400px; flex-basis: 400px; }
+}
+@media (max-width: 1050px) {
+  .graphrag-view { flex-direction: column; overflow-y: auto; }
+  /* Once stacked, the view itself is the scroller. Leaving flex:1 and an inner
+     overflow on these two collapses them to zero height inside it. */
+  .gr-main {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+  .gr-panel {
+    width: auto;
+    flex: 0 0 auto;
+    overflow: visible;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* ─────────────── Notebook launcher (GraphRAG right panel) ─────────────── */
+.gr-nb {
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 2px solid var(--ink);
+}
+.gr-nb-open {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border-strong);
+  background: linear-gradient(160deg, #ffffff 0%, #fbfaf8 100%);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.gr-nb-open:hover {
+  border-color: var(--ink);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.gr-nb-open-icon {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-md);
+  background: #12211a;
+  color: #9fe0bb;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.gr-nb-open-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gr-nb-open-text strong {
+  font-family: var(--sans);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+.gr-nb-open-text em {
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.gr-nb-open-arrow { margin-left: auto; color: var(--text-faint); font-size: 15px; }
+.gr-nb-lede {
+  margin: 10px 2px 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+/* ─────────────────────────── Notebook overlay ─────────────────────────── */
+.nbm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(15, 26, 20, 0.5);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3vh 3vw;
+  animation: nbm-fade 180ms ease-out;
+}
+@keyframes nbm-fade { from { opacity: 0 } to { opacity: 1 } }
+
+.nbm-dialog {
+  width: min(1180px, 100%);
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: 0 32px 80px rgba(12, 24, 18, 0.4);
+  overflow: hidden;
+  animation: nbm-rise 220ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes nbm-rise { from { opacity: 0; transform: translateY(14px) scale(0.99) } to { opacity: 1; transform: none } }
+.nbm-dialog:focus { outline: none; }
+
+.nbm-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sunken);
+}
+.nbm-head-text { min-width: 0; }
+.nbm-head-text h4 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.nbm-head-text p {
+  margin: 4px 0 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+.nbm-repo { color: var(--text-faint); }
+
+.nbm-run-all {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 150ms;
+}
+.nbm-run-all:hover { opacity: 0.85; }
+.nbm-close {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.nbm-close:hover { border-color: var(--ink); color: var(--ink); }
+
+.nbm-body { padding: 22px; overflow-y: auto; }
+
+.nbm-cell {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 12px 14px 14px;
+  margin-bottom: 16px;
+  background: var(--surface);
+  transition: border-color 200ms, box-shadow 200ms;
+}
+.nbm-cell.done { border-color: var(--border-strong); box-shadow: var(--shadow-xs); }
+.nbm-cell.running { border-color: #b98b3c; }
+
+.nbm-cell-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.nbm-in {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #3f6a8c;
+  white-space: pre;
+}
+.nbm-needs {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.nbm-needs code {
+  font-family: var(--mono);
+  color: var(--ink);
+  background: var(--accent-mint);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.nbm-run {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 150ms;
+}
+.nbm-run:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); color: #fff; }
+.nbm-run:disabled { opacity: 0.45; cursor: default; }
+
+.nbm-code {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: #12211a;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: #d3e0d9;
+  white-space: pre;
+  overflow-x: auto;
+}
+.nbm-code .tok-comment { color: #6f8b7c; font-style: italic; }
+.nbm-code .tok-string { color: #cbb27a; }
+.nbm-code .tok-keyword { color: #8fc3a6; }
+.nbm-code .tok-decorator { color: #b98b8b; }
+.nbm-code .tok-number { color: #d2a48b; }
+.nbm-code .tok-call { color: #9dbcd4; }
+
+.nbm-busy {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.nbm-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #b98b3c;
+  animation: nbm-pulse 1s infinite ease-in-out;
+}
+.nbm-dot:nth-child(2) { animation-delay: 0.15s; }
+.nbm-dot:nth-child(3) { animation-delay: 0.3s; margin-right: 6px; }
+@keyframes nbm-pulse { 0%, 100% { opacity: 0.25 } 50% { opacity: 1 } }
+
+.nbm-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 12px;
+  animation: nbm-fade 260ms ease-out;
+}
+.nbm-outcol { min-width: 0; }
+.nbm-outlabel {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #a32a2a;
+  margin-bottom: 5px;
+}
+.nbm-out {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 11.4px;
+  line-height: 1.62;
+  color: var(--text-dim);
+  white-space: pre;
+  overflow-x: auto;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.nbm-noout {
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  border: 1px dashed var(--border-strong);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+.nbm-noout p { margin: 0; }
+.nbm-noout code {
+  font-family: var(--mono);
+  font-size: 11.4px;
+  color: var(--text-dim);
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.nbm-explain {
+  min-width: 0;
+  padding: 13px 15px;
+  border-radius: var(--r-md);
+  background: var(--accent-mint);
+  border: 1px solid rgba(47, 111, 78, 0.16);
+  align-self: start;
+}
+.nbm-explain-eyebrow {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #2f6f4e;
+  margin-bottom: 7px;
+}
+.nbm-explain .markdown-content {
+  font-size: 12.8px;
+  line-height: 1.68;
+  color: #33463b;
+}
+.nbm-explain .markdown-content p { margin: 0; }
+.nbm-explain .markdown-content strong { color: var(--ink); }
+.nbm-explain .markdown-content code {
+  font-family: var(--mono);
+  font-size: 11.4px;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.nbm-foot {
+  margin: 4px 2px 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.7;
+  color: var(--text-faint);
+}
+
+@media (max-width: 900px) {
+  .nbm-result { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Mobile
+
+   Two things drive this layer. The React Flow canvas and the GraphRAG SVG
+   are both fixed-geometry diagrams: shrinking them to a phone's width makes
+   the labels unreadable, so instead they keep a legible minimum size and
+   the reader pans. Everything else collapses to a single column.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 860px) {
+  /* dvh tracks the collapsing mobile URL bar; vh does not */
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
+
+  .topbar {
+    gap: 12px;
+    padding: 0 14px;
+    height: 56px;
+    flex: 0 0 56px;
+  }
+  .topbar h1 {
+    font-size: var(--fs-md);
+    white-space: nowrap;
+  }
+  .view-tabs button {
+    padding: 6px 13px;
+    font-size: var(--fs-xs);
+  }
+
+  /* ── GraphRAG ── */
+  .gr-main {
+    padding: 12px 14px 16px;
+    gap: 10px;
+  }
+
+  /* One scrolling strip beats four wrapped rows of chips. The play button
+     is pulled to the front and pinned so it stays reachable mid-scroll. */
+  .gr-stagebar {
+    align-items: center;
+  }
+  .gr-groups {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+    flex: 1 1 auto;
+    /* snap so a chip never comes to rest half-clipped at the strip edge */
+    scroll-snap-type: x proximity;
+    scroll-padding-left: 2px;
+  }
+  .gr-chip {
+    scroll-snap-align: start;
+  }
+  .gr-groups::-webkit-scrollbar {
+    display: none;
+  }
+  .gr-groups > * {
+    flex: 0 0 auto;
+  }
+  .gr-play {
+    flex: 0 0 auto;
+    margin-top: 0;
+  }
+
+  /* the diagram keeps its readable size and pans sideways */
+  .gr-canvas {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 6px;
+  }
+  .gr-svg {
+    min-width: 760px;
+  }
+  .gr-swipe {
+    display: block;
+  }
+
+  .gr-caption {
+    font-size: 11px;
+    padding-left: 10px;
+  }
+  .gr-card-body {
+    font-size: 10.6px;
+    padding: 13px 14px;
+    max-height: 210px;
+  }
+  .gr-card-hint {
+    display: none;
+  }
+
+  .gr-panel-head {
+    position: static;
+    padding: 20px 18px 16px;
+  }
+  .gr-panel-head h3 {
+    font-size: 21px;
+  }
+  .gr-panel-body {
+    padding: 18px 18px 40px;
+  }
+
+  /* ── notebook overlay: full bleed ── */
+  .nbm-backdrop {
+    padding: 0;
+  }
+  .nbm-dialog {
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+  .nbm-head {
+    align-items: flex-start;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+  .nbm-head-text h4 {
+    font-size: 16px;
+    line-height: 1.25;
+  }
+  .nbm-head-text p {
+    font-size: 9.5px;
+  }
+  .nbm-run-all {
+    padding: 7px 12px;
+    font-size: 10.5px;
+  }
+  .nbm-body {
+    padding: 14px;
+  }
+  .nbm-cell {
+    padding: 10px 10px 12px;
+  }
+  .nbm-code,
+  .nbm-out {
+    font-size: 10.6px;
+    padding: 11px 12px;
+  }
+  .nbm-explain .markdown-content {
+    font-size: 12.4px;
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    gap: 8px;
+    padding: 0 10px;
+  }
+  .topbar h1 {
+    font-size: var(--fs-base);
+  }
+  .view-tabs button {
+    padding: 6px 10px;
+  }
+
+  .gr-main {
+    padding: 10px 10px 14px;
+  }
+  .gr-chip {
+    font-size: 11px;
+    padding: 11px 15px;
+  }
+  .gr-play {
+    width: 38px;
+    height: 38px;
+  }
+  .gr-grouplabel {
+    font-size: 9px;
+  }
+  .gr-panel-head h3 {
+    font-size: 19px;
+  }
+  .gr-para {
+    font-size: 13.5px;
+    line-height: 1.72;
+  }
+
+  .gr-nb-open {
+    padding: 12px;
+    gap: 10px;
+  }
+  .gr-nb-open-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+
+  /* the vanilla RAG rail and detail become full-height sheets */
+  .rail,
+  .detail {
+    top: 56px;
+    width: 100%;
+    flex-basis: 100%;
+    border-radius: 0;
+    margin-top: 0;
+  }
+  .rail {
+    padding: 20px 18px 40px;
+  }
+  .detail-head {
+    padding: 22px 18px 18px;
+  }
+  .detail-body {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .cm-overlay {
+    padding: 0;
+  }
+  .cm-detail {
+    width: 100%;
+    flex-basis: 100%;
+  }
+}

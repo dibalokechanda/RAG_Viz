@@ -1,42 +1,30 @@
-# 🗺️ RAG Pipeline — Interactive Map
+# RAG Pipeline · Interactive Map
 
-A beautiful, interactive React Flow visualisation of a RAG (Retrieval-Augmented Generation) pipeline! 🚀
+An interactive teaching resource for retrieval-augmented generation. Most RAG explanations are either a five-box diagram that hides every decision, or a paper that assumes you already know the shape. This sits in between: you can see the whole pipeline at once, then click into any single stage and read the maths, the trade-off, and the code that implements it.
 
-Click any stage to read what it does, the equations behind it, and what it costs. Swap implementation variants to watch the graph rewire! 🔄
+Two views, reachable from the tabs at the top.
 
-## ✨ Features
+## Vanilla RAG
 
-- **🌐 31 Interactive Stages:** Covers Offline (Chunking, Embedding, Indexing), Online (Retrieval, Reranking, Generation) — and a Platform control plane.
-- **🛡️ Governance & Ops Lane:** Ingestion triggers, access control, artifact versioning, the golden set, a CI/CD evaluation gate, and graceful fallback. Toggle the whole lane on or off.
-- **🎛️ Dynamic Graph:** Toggling features like HyDE or Multi-Query actually changes the graph structure on the fly!
-- **📊 Detailed Metrics:** Two separate evaluation stages to isolate retrieval vs generation performance.
-- **🎨 Built-in Figures:** 16 inline SVG diagrams dynamically rendered for metrics like BM25 saturation, top-P, and PQ decomposition.
-- **🧮 Interactive Math:** Every stage carries worked maths rendered with KaTeX. See the formulas in action!
-- **🧠 Concept Maps:** Drill down into sub-topics with radial mind maps for deep learning.
-- **▶️ Walkthrough Player:** Press play to walk a single query step-by-step through the whole pipeline!
+The classic pipeline, drawn as a graph you can rewire. Query understanding, chunking, embedding, indexing, retrieval, reranking, prompt construction, generation, post-processing, evaluation, plus a governance and ops control plane that sits beside the query path rather than on it.
 
-## 🛡️ The Control Plane
+Swap an implementation variant and the graph restructures: turn on HyDE or multi-query and new stages appear, switch the index from flat to IVF to HNSW and the retrieval path changes with it. Every stage carries worked maths rendered with KaTeX, an inline figure, a LangChain or LangGraph snippet, and the tools people actually reach for. Deeper topics open into their own concept maps, and the HNSW section builds up from small-world graphs through greedy search and skip lists to a 3D view of the layered graph.
 
-Six stages that **govern** the pipeline without ever sitting on the query path — so a query never passes through them, and the walkthrough player skips them.
+## GraphRAG
 
-| Stage | What it answers |
-| --- | --- |
-| **Ingestion Triggers** | What causes new content to enter — cron, webhook, CDC, upload. Plus change detection and the tombstone path for deletes. |
-| **Access Control & Policy** | Who may see which chunk. ACL capture at ingest, pre- vs post-filter enforcement, tenant isolation, PII redaction. |
-| **Artifact Versioning** | Pin the four things an answer depends on — chunker, embedder, index, prompt — in one manifest, promoted as a unit. |
-| **Golden Set** | The labelled queries every metric is computed against. Synthetic vs pooled vs production-mined, and why size matters less than stability. |
-| **CI/CD Evaluation Gate** | Run the golden set on every artifact change; promote or block against an absolute floor and a relative tolerance. |
-| **Graceful Fallback** | Roll the alias back in seconds, and degrade a live request down a defined ladder instead of erroring. |
+Microsoft's graph-based approach, walked through in nine stages. Loading and splitting, entity and relationship extraction, sub-graph merging, hierarchical Leiden community detection, Node2Vec, community report generation and summarisation, then local, global and DRIFT search.
 
-Because these relate to *half the pipeline at once*, drawing an edge for each would turn the canvas into spaghetti. Only one real data flow is drawn — **triggers → ingestion**. Every other relationship becomes a **clickable `governs` pill**: click one to select that stage and pan straight to it. The pills carry the relationship *and* do the navigation the edges would have done.
+The content is grounded in a real worked example rather than invented: real entities, real relationship strengths, the actual extraction prompt and its raw delimited output, real community reports. Each stage also opens a notebook overlay with runnable cells and their captured output, numbered as one continuous kernel so you can see what each step actually produces.
 
-## 🚀 Quick Start
+## What it is good for
+
+Learning the vocabulary and seeing where each piece sits. Understanding why a choice exists before memorising which option to pick. Comparing vanilla RAG against GraphRAG on the same terms, and seeing concretely which questions each one can and cannot answer.
+
+## Run it
 
 ```bash
 npm install
 npm run dev
 ```
 
-> **Note:** `vite.config.ts` sets `base: '/RAG_Viz/'` for GitHub Pages, so a production preview serves at `http://localhost:4173/RAG_Viz/` — not the root. `npm run dev` is unaffected.
-
-Enjoy exploring the anatomy of RAG! 🧩
+`vite.config.ts` sets `base: '/RAG_Viz/'` for GitHub Pages, so a production preview serves at `http://localhost:4173/RAG_Viz/` rather than the root. `npm run dev` is unaffected.

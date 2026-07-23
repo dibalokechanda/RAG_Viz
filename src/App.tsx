@@ -20,6 +20,7 @@ import LaneLabel from './components/LaneLabel'
 import { JoinEdge, PipelineEdge } from './components/edges'
 import DetailPanel from './components/DetailPanel'
 import ControlRail from './components/ControlRail'
+import GraphRAGView from './components/GraphRAGView'
 
 const nodeTypes = { stage: StageNode, lane: LaneLabel }
 const edgeTypes = { pipeline: PipelineEdge, join: JoinEdge }
@@ -27,8 +28,17 @@ const edgeTypes = { pipeline: PipelineEdge, join: JoinEdge }
 function Canvas() {
   const [config, setConfig] = useState<PipelineConfig>(defaultConfig)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [railCollapsed, setRailCollapsed] = useState(false)
+  // On a phone the rail is a full-screen sheet, so leaving it open on load
+  // would hide the diagram behind it. The topbar toggle brings it back.
+  const [railCollapsed, setRailCollapsed] = useState(
+    () => window.matchMedia('(max-width: 860px)').matches,
+  )
+
+  // Read once: this only feeds fitView, which runs at mount and on rail
+  // toggles, so tracking resize buys nothing.
+  const [narrow] = useState(() => window.matchMedia('(max-width: 860px)').matches)
   const [mapOpen, setMapOpen] = useState(false)
+  const [view, setView] = useState<'rag' | 'graphrag'>('rag')
   const { setCenter, fitView } = useReactFlow()
 
   const { nodes, edges } = useMemo(
@@ -76,11 +86,20 @@ function Canvas() {
     return () => window.removeEventListener('keydown', onKey)
   }, [mapOpen])
 
-  // Collapsing the rail changes the canvas width, so re-fit to use it.
+  // Collapsing the rail changes the canvas width, so re-fit to use it. Same
+  // zoom floor as the initial fit, phone included.
   useEffect(() => {
-    const t = setTimeout(() => fitView({ padding: 0.15, minZoom: 0.75, duration: 400 }), 240)
+    const t = setTimeout(
+      () =>
+        fitView({
+          padding: narrow ? 0.06 : 0.15,
+          minZoom: narrow ? 0.3 : 0.75,
+          duration: 400,
+        }),
+      240,
+    )
     return () => clearTimeout(t)
-  }, [railCollapsed, fitView])
+  }, [railCollapsed, fitView, narrow])
 
 
 
@@ -107,67 +126,92 @@ function Canvas() {
     <PipelineContext.Provider value={ctx}>
       <div className="app">
         <header className="topbar">
-          <button
-            className="rail-toggle"
-            onClick={() => setRailCollapsed((c) => !c)}
-            title={railCollapsed ? 'Show controls' : 'Hide controls'}
-            aria-expanded={!railCollapsed}
-          >
-            ☰
-          </button>
+          {view === 'rag' && (
+            <button
+              className="rail-toggle"
+              onClick={() => setRailCollapsed((c) => !c)}
+              title={railCollapsed ? 'Show controls' : 'Hide controls'}
+              aria-expanded={!railCollapsed}
+            >
+              ☰
+            </button>
+          )}
           <h1>RAG Pipeline</h1>
-          <span className="sub">Interactive map. Click any stage to view details</span>
-          <div className="topbar-spacer" />
-          <div className="lane-key">
-            <span>
-              <i /> Offline · build the index
-            </span>
-            <span>
-              <i className="key-online" /> Online · per query
-            </span>
-            <span>
-              <i className="key-join" /> The join
-            </span>
+          <div className="view-tabs" role="tablist">
+            <button
+              role="tab"
+              aria-selected={view === 'rag'}
+              className={view === 'rag' ? 'on' : ''}
+              onClick={() => setView('rag')}
+            >
+              Vanilla RAG
+            </button>
+            <button
+              role="tab"
+              aria-selected={view === 'graphrag'}
+              className={view === 'graphrag' ? 'on' : ''}
+              onClick={() => setView('graphrag')}
+            >
+              GraphRAG
+            </button>
           </div>
+          <div className="topbar-spacer" />
+          {view === 'rag' && (
+            <div className="lane-key">
+              <span>
+                <i /> Offline · build the index
+              </span>
+              <span>
+                <i className="key-online" /> Online · per query
+              </span>
+              <span>
+                <i className="key-join" /> The join
+              </span>
+            </div>
+          )}
         </header>
 
-        <div className="workspace">
-          <ControlRail collapsed={railCollapsed} />
+        {view === 'graphrag' ? (
+          <GraphRAGView />
+        ) : (
+          <div className="workspace">
+            <ControlRail collapsed={railCollapsed} />
 
-          <div className="canvas-wrap">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              onNodeClick={onNodeClick}
-              onPaneClick={() => setSelectedId(null)}
-              fitView
-              // Floor the initial zoom: fitting all four columns on a laptop
-              // shrinks the cards past readability. Better to open legible and
-              // let the user pan than to show everything too small to read.
-              fitViewOptions={{ padding: 0.15, minZoom: 0.75 }}
-              minZoom={0.2}
-              maxZoom={1.6}
-              proOptions={{ hideAttribution: true }}
-              nodesDraggable={false}
-              nodesConnectable={false}
-            >
-              <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="var(--bg-grid)" />
-              <Controls showInteractive={false} position="bottom-right" />
-            </ReactFlow>
+            <div className="canvas-wrap">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                onNodeClick={onNodeClick}
+                onPaneClick={() => setSelectedId(null)}
+                fitView
+                // Floor the initial zoom: fitting all four columns on a laptop
+                // shrinks the cards past readability. Better to open legible and
+                // let the user pan than to show everything too small to read.
+                // On a phone that trade flips: 0.75 shows a single card, so let
+                // the overall shape win there and leave reading to pinch-zoom.
+                fitViewOptions={{ padding: narrow ? 0.06 : 0.15, minZoom: narrow ? 0.3 : 0.75 }}
+                minZoom={0.2}
+                maxZoom={1.6}
+                proOptions={{ hideAttribution: true }}
+                nodesDraggable={false}
+                nodesConnectable={false}
+              >
+                <Background variant={BackgroundVariant.Dots} gap={26} size={1} color="var(--bg-grid)" />
+                <Controls showInteractive={false} position="bottom-right" />
+              </ReactFlow>
+            </div>
 
-
+            <DetailPanel
+              stage={selectedStage}
+              variantId={selectedVariant}
+              onOpenMap={() => setMapOpen(true)}
+            />
           </div>
+        )}
 
-          <DetailPanel
-            stage={selectedStage}
-            variantId={selectedVariant}
-            onOpenMap={() => setMapOpen(true)}
-          />
-        </div>
-
-        {mapOpen && selectedStage && (
+        {mapOpen && selectedStage && view === 'rag' && (
           <ConceptMap stage={selectedStage} onClose={() => setMapOpen(false)} />
         )}
       </div>
