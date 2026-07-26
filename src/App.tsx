@@ -23,13 +23,14 @@ import ControlRail from './components/ControlRail'
 import GraphRAGView, { GRAPHRAG_TRACK } from './components/GraphRAGView'
 import Walkthrough from './components/Walkthrough'
 import VariantViz from './components/VariantViz'
+import AgenticRAGView from './components/AgenticRAGView'
 import { LAZY_TRACK, LIGHT_TRACK, PATH_TRACK } from './data/variants'
 import type { Track } from './data/walkthrough'
 
 /* Vanilla RAG is its own screen. GraphRAG is a family: the original method
    plus three variants, all on the shared walkthrough shell. It shows as one
    top tab, and the family members appear as a row of sub-tabs beneath it. */
-type ViewKey = 'rag' | 'graphrag' | 'lazy' | 'light' | 'path'
+type ViewKey = 'rag' | 'graphrag' | 'lazy' | 'light' | 'path' | 'agentic'
 type VariantKey = 'lazy' | 'light' | 'path'
 
 const VARIANTS: Record<VariantKey, Track> = {
@@ -183,6 +184,14 @@ function Canvas() {
             >
               GraphRAG
             </button>
+            <button
+              role="tab"
+              aria-selected={view === 'agentic'}
+              className={view === 'agentic' ? 'on' : ''}
+              onClick={() => setView('agentic')}
+            >
+              Agentic RAG
+            </button>
           </div>
           <div className="topbar-spacer" />
           {view === 'rag' && (
@@ -236,6 +245,8 @@ function Canvas() {
               onOpenMap={() => setMapOpen(true)}
             />
           </div>
+        ) : view === 'agentic' ? (
+          <AgenticRAGView />
         ) : (
           <div className="graph-family">
             <div className="subtabs">

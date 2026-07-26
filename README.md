@@ -2,7 +2,7 @@
 
 An interactive teaching resource for retrieval-augmented generation. Most RAG explanations are either a five-box diagram that hides every decision, or a paper that assumes you already know the shape. This sits in between: you can see the whole pipeline at once, then click into any single stage and read the maths, the trade-off, and the code that implements it.
 
-Two tabs at the top: Vanilla RAG, and GraphRAG. GraphRAG is a family, so selecting it reveals a row of sub-tabs for the original method and its three variants (LazyGraphRAG, LightRAG, PathRAG), all walked through on the same shell so they compare step against step.
+Three tabs at the top: Vanilla RAG, GraphRAG, and Agentic RAG. GraphRAG is a family, so selecting it reveals a row of sub-tabs for the original method and its three variants (LazyGraphRAG, LightRAG, PathRAG), all walked through on the same shell so they compare step against step.
 
 ## Vanilla RAG
 
@@ -25,6 +25,12 @@ Three variants, reached from the sub-tabs under GraphRAG. Every figure quoted in
 **LightRAG** makes every node and edge directly retrievable through key-value profiles, then retrieves at two levels at once: low-level keywords match specific entities, high-level keywords match themes spanning many of them. Because nothing is a summary of a summary, a new document merges in by union of the node and edge sets rather than triggering a rebuild.
 
 **PathRAG** argues the problem with graph RAG is redundancy, not insufficiency. It retrieves relational *paths*, prunes them with a flow-based scheme where resource decays and splits across out-edges so hubs fade instead of dominating, and then orders paths in the prompt by ascending reliability so the strongest one lands at the end, where models attend most.
+
+## Agentic RAG
+
+A different shape of system, so a different kind of view: an execution simulator rather than a pipeline. One agent sits at the centre and you step through a full run of an enterprise question ("Should NVIDIA acquire Cerebras?"), watching it reason, plan, light up tools in the registry, spawn specialised subagents that work in parallel, and synthesise a final recommendation with a confidence score. A single step index drives the whole dashboard, so play, scrub, and step backward all stay in sync.
+
+This first pass covers the central loop (agent, loop ring, tool registry, subagents, timeline, playback); memory, the full planner, the retrieval pipeline and a DAG view are the next regions to add.
 
 ## What it is good for
 
