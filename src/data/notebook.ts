@@ -1,7 +1,7 @@
 /*
  * The GraphRAG walkthrough as one continuous notebook session.
  *
- * Cells are numbered 1..14 in execution order across the whole walkthrough,
+ * Cells are numbered 1..15 in execution order across the whole walkthrough,
  * so the strip shown under each stage is a slice of a single running kernel:
  * cell 3 needs `texts` from cell 1, cell 10 needs `community_reports` from
  * cell 9, and so on.

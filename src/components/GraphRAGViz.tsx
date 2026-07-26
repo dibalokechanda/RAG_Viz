@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import * as d3 from 'd3'
 import { COMMUNITIES, ENTITIES, RELATIONSHIPS, PAPER, CHUNKING, type CommunityId } from '../data/graphrag'
+import { ACCENT, DIM, Eyebrow, H, INK, LINE, Panel, SceneDefs, W, useGraphLayout, wrap } from './sceneKit'
 
 export type StageKey =
   | 'load'
@@ -13,142 +13,9 @@ export type StageKey =
   | 'global'
   | 'drift'
 
-const W = 1160
-const H = 500
-const ACCENT = '#a32a2a'
-const INK = '#13251b'
-const LINE = '#e6e1d9'
-const DIM = '#8b857c'
-
-const mulberry32 = (a: number) => () => {
-  a |= 0
-  a = (a + 0x6d2b79f5) | 0
-  let t = Math.imul(a ^ (a >>> 15), 1 | a)
-  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-}
-
-function wrap(text: string, max: number) {
-  const words = text.split(' ')
-  const lines: string[] = []
-  let cur = ''
-  for (const w of words) {
-    if ((cur + ' ' + w).trim().length > max) {
-      lines.push(cur.trim())
-      cur = w
-    } else cur += ' ' + w
-  }
-  if (cur.trim()) lines.push(cur.trim())
-  return lines
-}
-
-/* a soft white panel used everywhere, so every scene shares one material */
-function Panel({
-  x,
-  y,
-  w,
-  h,
-  accent,
-  strong,
-}: {
-  x: number
-  y: number
-  w: number
-  h: number
-  accent?: string
-  strong?: boolean
-}) {
-  return (
-    <g>
-      <rect x={x} y={y} width={w} height={h} rx="11" fill="#fff" filter="url(#cardshadow)" />
-      <rect
-        x={x}
-        y={y}
-        width={w}
-        height={h}
-        rx="11"
-        fill="none"
-        stroke={accent ?? LINE}
-        strokeOpacity={accent ? (strong ? 0.65 : 0.4) : 1}
-        strokeWidth={strong ? 1.5 : 1}
-      />
-      {accent && <rect x={x} y={y} width={w} height={4} rx="2" fill={accent} />}
-    </g>
-  )
-}
-
-function Eyebrow({ x, y, children, fill = DIM }: { x: number; y: number; children: string; fill?: string }) {
-  return (
-    <text x={x} y={y} fontSize="7.6" fontFamily="var(--mono)" fontWeight="600" fill={fill} letterSpacing="0.1em">
-      {children}
-    </text>
-  )
-}
-
 export default function GraphRAGViz({ stage }: { stage: StageKey }) {
-  /* ── force layout, computed once and deterministic ───────────────────── */
-  const { pos, hulls, radius } = useMemo(() => {
-    const rng = mulberry32(7)
-    const anchor: Record<CommunityId, [number, number]> = {
-      eval: [0.3, 0.3],
-      peft: [0.68, 0.3],
-      privacy: [0.3, 0.74],
-      safety: [0.72, 0.74],
-    }
-    type SN = { id: string; community: CommunityId; x: number; y: number }
-    const nodes: SN[] = ENTITIES.map((e) => ({
-      id: e.id,
-      community: e.community,
-      x: anchor[e.community][0] * 520 + (rng() - 0.5) * 60,
-      y: anchor[e.community][1] * 380 + (rng() - 0.5) * 60,
-    }))
-    const links = RELATIONSHIPS.map((r) => ({ source: r.source, target: r.target }))
-    const sim = d3
-      .forceSimulation(nodes as d3.SimulationNodeDatum[])
-      .force('link', d3.forceLink(links).id((d: d3.SimulationNodeDatum & { id?: string }) => d.id!).distance(74).strength(0.4))
-      .force('charge', d3.forceManyBody().strength(-260))
-      .force('x', d3.forceX((d: SN) => anchor[d.community][0] * 520).strength(0.18))
-      .force('y', d3.forceY((d: SN) => anchor[d.community][1] * 380).strength(0.18))
-      .force('collide', d3.forceCollide(34))
-      .stop()
-    for (let i = 0; i < 400; i++) sim.tick()
-
-    const xs = nodes.map((n) => n.x)
-    const ys = nodes.map((n) => n.y)
-    const [x0, x1] = [Math.min(...xs), Math.max(...xs)]
-    const [y0, y1] = [Math.min(...ys), Math.max(...ys)]
-    const m = (v: number, a: number, b: number, c: number, d: number) => c + ((v - a) / (b - a || 1)) * (d - c)
-    const pos: Record<string, { x: number; y: number }> = {}
-    for (const n of nodes) pos[n.id] = { x: m(n.x, x0, x1, 400, W - 120), y: m(n.y, y0, y1, 82, H - 108) }
-
-    const radius: Record<string, number> = {}
-    for (const e of ENTITIES) radius[e.id] = 8 + (e.weight / 10) * 7
-
-    /* bx/by is a badge anchor just *below* each hull, where nothing else sits:
-       node labels always render above their node, so the space under the hull
-       is the only reliably empty spot. */
-    const hulls: { c: CommunityId; path: string; cx: number; cy: number; bx: number; by: number }[] = []
-    for (const c of Object.keys(COMMUNITIES) as CommunityId[]) {
-      const pts = ENTITIES.filter((e) => e.community === c).map((e) => [pos[e.id].x, pos[e.id].y] as [number, number])
-      const cx = d3.mean(pts, (p) => p[0])!
-      const cy = d3.mean(pts, (p) => p[1])!
-      const hull = d3.polygonHull(pts.map((p) => [...p] as [number, number]))
-      let path = ''
-      let by = cy + 44
-      if (hull) {
-        const grown = hull.map(([px, py]) => {
-          const dx = px - cx
-          const dy = py - cy
-          const L = Math.hypot(dx, dy) || 1
-          return [px + (dx / L) * 36, py + (dy / L) * 36] as [number, number]
-        })
-        path = d3.line().curve(d3.curveCatmullRomClosed.alpha(0.7))(grown) ?? ''
-        by = Math.max(...grown.map((g) => g[1])) + 20
-      }
-      hulls.push({ c, path, cx, cy, bx: cx, by: Math.min(by, H - 48) })
-    }
-    return { pos, hulls, radius }
-  }, [])
+  /* the shared deterministic layout; 400 leaves room for a left-side panel */
+  const { pos, hulls, radius } = useGraphLayout(400)
 
   /* sub-tick for within-stage animation (chunk window, walks, map-reduce) */
   const [sub, setSub] = useState(0)
@@ -182,43 +49,7 @@ export default function GraphRAGViz({ stage }: { stage: StageKey }) {
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="gr-svg">
-      <defs>
-        <linearGradient id="paper-sheen" x1="0" y1="0" x2="0.4" y2="1">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#f8f6f2" />
-        </linearGradient>
-        <linearGradient id="ink-sheen" x1="0" y1="0" x2="0.6" y2="1">
-          <stop offset="0%" stopColor="#1d3529" />
-          <stop offset="100%" stopColor="#0e1c15" />
-        </linearGradient>
-        {(Object.keys(COMMUNITIES) as CommunityId[]).map((c) => {
-          const base = COMMUNITIES[c].color
-          const hi = d3.color(base)!.brighter(0.9).formatHex()
-          return (
-            <radialGradient key={c} id={`nodegrad-${c}`} cx="34%" cy="26%" r="76%">
-              <stop offset="0%" stopColor={hi} />
-              <stop offset="100%" stopColor={base} />
-            </radialGradient>
-          )
-        })}
-        <radialGradient id="nodegrad-plain" cx="34%" cy="26%" r="76%">
-          <stop offset="0%" stopColor="#cbc5bc" />
-          <stop offset="100%" stopColor="#a59e95" />
-        </radialGradient>
-        <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
-          <feDropShadow dx="0" dy="1.5" stdDeviation="2" floodColor={INK} floodOpacity="0.24" />
-        </filter>
-        <filter id="cardshadow" x="-30%" y="-30%" width="160%" height="190%">
-          <feDropShadow dx="0" dy="5" stdDeviation="8" floodColor={INK} floodOpacity="0.11" />
-        </filter>
-        <filter id="glow" x="-70%" y="-70%" width="240%" height="240%">
-          <feGaussianBlur stdDeviation="5" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
+      <SceneDefs />
 
       {/* ═══════════════ STAGE 1: load & split ═══════════════ */}
       {stage === 'load' &&
