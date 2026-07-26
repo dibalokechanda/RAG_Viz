@@ -3844,8 +3844,14 @@ body {
   color: var(--text-faint);
   flex: 0 0 auto;
 }
-.ag-speed { padding: 7px 12px; }
-.ag-toggle { padding: 7px 12px; }
+/* speed + thoughts sit in a ctrl-group too, so the round-button rule above
+   would clamp them to 34px circles and clip the label. Keep them as pills. */
+.ag-controls .ag-speed,
+.ag-controls .ag-toggle {
+  width: auto;
+  height: 34px;
+  padding: 0 15px;
+}
 .ag-toggle.on {
   background: var(--ink);
   border-color: var(--ink);
