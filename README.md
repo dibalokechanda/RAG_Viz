@@ -2,7 +2,7 @@
 
 An interactive teaching resource for retrieval-augmented generation. Most RAG explanations are either a five-box diagram that hides every decision, or a paper that assumes you already know the shape. This sits in between: you can see the whole pipeline at once, then click into any single stage and read the maths, the trade-off, and the code that implements it.
 
-Five views, reachable from the tabs at the top.
+Two tabs at the top: Vanilla RAG, and GraphRAG. GraphRAG is a family, so selecting it reveals a row of sub-tabs for the original method and its three variants (LazyGraphRAG, LightRAG, PathRAG), all walked through on the same shell so they compare step against step.
 
 ## Vanilla RAG
 
@@ -18,7 +18,7 @@ The content is grounded in a real worked example rather than invented: real enti
 
 ## LazyGraphRAG, LightRAG and PathRAG
 
-Three variants, each walked through on the same shell so they can be compared step against step rather than paper against paper. Every figure quoted in the notes comes from the primary source.
+Three variants, reached from the sub-tabs under GraphRAG. Every figure quoted in the notes comes from the primary source.
 
 **LazyGraphRAG** inverts GraphRAG's bet. It uses no LLM at index time at all: noun-phrase extraction gives concepts, co-occurrence gives edges, and graph statistics give the community hierarchy, for indexing cost Microsoft report as identical to vector RAG. The deferred work lands at query time as a relevance test budget, one dial that trades cost against quality.
 

@@ -20,28 +20,31 @@ import LaneLabel from './components/LaneLabel'
 import { JoinEdge, PipelineEdge } from './components/edges'
 import DetailPanel from './components/DetailPanel'
 import ControlRail from './components/ControlRail'
-import GraphRAGView from './components/GraphRAGView'
+import GraphRAGView, { GRAPHRAG_TRACK } from './components/GraphRAGView'
 import Walkthrough from './components/Walkthrough'
 import VariantViz from './components/VariantViz'
 import { LAZY_TRACK, LIGHT_TRACK, PATH_TRACK } from './data/variants'
+import type { Track } from './data/walkthrough'
 
-/* Vanilla RAG is its own screen; the four graph methods all run on the shared
-   walkthrough shell, so adding one is a track plus a set of scenes. */
+/* Vanilla RAG is its own screen. GraphRAG is a family: the original method
+   plus three variants, all on the shared walkthrough shell. It shows as one
+   top tab, and the family members appear as a row of sub-tabs beneath it. */
 type ViewKey = 'rag' | 'graphrag' | 'lazy' | 'light' | 'path'
+type VariantKey = 'lazy' | 'light' | 'path'
 
-const VARIANTS = {
+const VARIANTS: Record<VariantKey, Track> = {
   lazy: LAZY_TRACK,
   light: LIGHT_TRACK,
   path: PATH_TRACK,
-} as const
+}
 
-const TABS: { key: ViewKey; label: string }[] = [
-  { key: 'rag', label: 'Vanilla RAG' },
-  { key: 'graphrag', label: 'GraphRAG' },
-  { key: 'lazy', label: LAZY_TRACK.label },
-  { key: 'light', label: LIGHT_TRACK.label },
-  { key: 'path', label: PATH_TRACK.label },
+const GRAPH_FAMILY: { key: ViewKey; track: Track }[] = [
+  { key: 'graphrag', track: GRAPHRAG_TRACK },
+  { key: 'lazy', track: LAZY_TRACK },
+  { key: 'light', track: LIGHT_TRACK },
+  { key: 'path', track: PATH_TRACK },
 ]
+const GRAPH_VIEWS = GRAPH_FAMILY.map((f) => f.key)
 
 const nodeTypes = { stage: StageNode, lane: LaneLabel }
 const edgeTypes = { pipeline: PipelineEdge, join: JoinEdge }
@@ -143,6 +146,9 @@ function Canvas() {
     [config, setVariant, toggle, focusStage],
   )
 
+  const inGraphFamily = GRAPH_VIEWS.includes(view)
+  const activeTrack = GRAPH_FAMILY.find((f) => f.key === view)?.track
+
   return (
     <PipelineContext.Provider value={ctx}>
       <div className="app">
@@ -159,17 +165,24 @@ function Canvas() {
           )}
           <h1>RAG Pipeline</h1>
           <div className="view-tabs" role="tablist">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                role="tab"
-                aria-selected={view === t.key}
-                className={view === t.key ? 'on' : ''}
-                onClick={() => setView(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
+            <button
+              role="tab"
+              aria-selected={view === 'rag'}
+              className={view === 'rag' ? 'on' : ''}
+              onClick={() => setView('rag')}
+            >
+              Vanilla RAG
+            </button>
+            <button
+              role="tab"
+              aria-selected={inGraphFamily}
+              className={inGraphFamily ? 'on' : ''}
+              onClick={() => {
+                if (!inGraphFamily) setView('graphrag')
+              }}
+            >
+              GraphRAG
+            </button>
           </div>
           <div className="topbar-spacer" />
           {view === 'rag' && (
@@ -187,11 +200,7 @@ function Canvas() {
           )}
         </header>
 
-        {view === 'graphrag' ? (
-          <GraphRAGView />
-        ) : view !== 'rag' ? (
-          <Walkthrough track={VARIANTS[view]} renderScene={(key) => <VariantViz stage={key} />} />
-        ) : (
+        {view === 'rag' ? (
           <div className="workspace">
             <ControlRail collapsed={railCollapsed} />
 
@@ -226,6 +235,30 @@ function Canvas() {
               variantId={selectedVariant}
               onOpenMap={() => setMapOpen(true)}
             />
+          </div>
+        ) : (
+          <div className="graph-family">
+            <div className="subtabs">
+              <div className="subtabs-row" role="tablist" aria-label="GraphRAG family">
+                {GRAPH_FAMILY.map(({ key, track }) => (
+                  <button
+                    key={key}
+                    role="tab"
+                    aria-selected={view === key}
+                    className={`subtab ${view === key ? 'on' : ''}`}
+                    onClick={() => setView(key)}
+                  >
+                    {track.label}
+                  </button>
+                ))}
+              </div>
+              {activeTrack && <p className="subtabs-tagline">{activeTrack.tagline}</p>}
+            </div>
+            {view === 'graphrag' ? (
+              <GraphRAGView />
+            ) : (
+              <Walkthrough track={VARIANTS[view as VariantKey]} renderScene={(key) => <VariantViz stage={key} />} />
+            )}
           </div>
         )}
 
