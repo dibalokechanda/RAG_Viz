@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { LOOP, QUERY, STEPS, TIPS, TOOLS, deriveWorld } from '../data/agentic'
+import { LOOP, MEMORY_GROUPS, QUERY, STEPS, TIPS, TOOLS, deriveWorld } from '../data/agentic'
 
 /*
  * Agentic RAG dashboard. A single step index drives everything: deriveWorld
@@ -17,10 +17,19 @@ export default function AgenticRAGView() {
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(1)
   const [showThoughts, setShowThoughts] = useState(true)
+  const [openMem, setOpenMem] = useState<Set<string>>(new Set())
   const timelineRef = useRef<HTMLDivElement>(null)
 
   const world = deriveWorld(idx)
-  const { step, subagents, toolCalls, activeTools, final } = world
+  const { step, subagents, toolCalls, activeTools, memory, final } = world
+
+  const toggleMem = (id: string) =>
+    setOpenMem((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const last = STEPS.length - 1
 
   useEffect(() => {
@@ -92,46 +101,50 @@ export default function AgenticRAGView() {
         <span />
       </div>
 
-      {/* ── agent row: loop · agent · plan ── */}
+      {/* ── agent row: memory · agent · planner ── */}
       <div className="ag-core">
-        {/* loop ring */}
-        <div className="ag-loop">
+        {/* memory */}
+        <div className="ag-memory">
           <header className="ag-region-head">
-            <span className="ag-eyebrow">Agent loop</span>
-            <span className="ag-tip" data-tip={TIPS.loop}>
+            <span className="ag-eyebrow">Memory</span>
+            <span className="ag-tip" data-tip={TIPS.memory}>
               ⓘ
             </span>
           </header>
-          <div className="ag-loop-body">
-            <svg viewBox="0 0 68 68" className="ag-ring">
-              <circle cx="34" cy="34" r="29" fill="none" stroke="var(--border-strong)" strokeWidth="4" />
-              <circle
-                cx="34"
-                cy="34"
-                r="29"
-                fill="none"
-                stroke="var(--ink)"
-                strokeWidth="4"
-                strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 29}
-                strokeDashoffset={2 * Math.PI * 29 * (1 - (LOOP.indexOf(step.loop) + 1) / LOOP.length)}
-                transform="rotate(-90 34 34)"
-                style={{ transition: 'stroke-dashoffset 500ms' }}
-              />
-              <text x="34" y="30" textAnchor="middle" className="ag-ring-n">
-                {step.iter}
-              </text>
-              <text x="34" y="42" textAnchor="middle" className="ag-ring-l">
-                iter
-              </text>
-            </svg>
-            <ul className="ag-loop-list">
-              {LOOP.map((s) => (
-                <li key={s} className={s === step.loop ? 'on' : ''}>
-                  {s}
-                </li>
-              ))}
-            </ul>
+          <div className="ag-mem-scroll">
+            {MEMORY_GROUPS.map((g) => {
+              const entries = memory.filter((m) => m.type === g.type)
+              return (
+                <div className="ag-mem-group" key={g.type}>
+                  <div className="ag-mem-gh">
+                    <span className={`ag-mem-gname ${g.type}`}>{g.name}</span>
+                    <span className="ag-tip" data-tip={g.tip}>
+                      ⓘ
+                    </span>
+                    <span className="ag-mem-gcount">{entries.length}</span>
+                  </div>
+                  {entries.map((m) => {
+                    const open = openMem.has(m.id)
+                    return (
+                      <button
+                        key={m.id}
+                        className={`ag-mem-entry ${m.type} ${open ? 'open' : ''} ${m.since === idx && idx > 0 ? 'fresh' : ''}`}
+                        onClick={() => toggleMem(m.id)}
+                      >
+                        <span className="ag-mem-row">
+                          <span className={`ag-mem-mark ${m.kind ?? ''}`}>
+                            {m.kind === 'success' ? '✓' : m.kind === 'failure' ? '!' : m.kind === 'note' ? '+' : '•'}
+                          </span>
+                          <span className="ag-mem-label">{m.label}</span>
+                          <span className="ag-mem-caret">{open ? '−' : '+'}</span>
+                        </span>
+                        {open && <span className="ag-mem-detail">{m.detail}</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -207,6 +220,23 @@ export default function AgenticRAGView() {
             })}
           </ul>
         </div>
+      </div>
+
+      {/* ── agent loop, as a horizontal stepper ── */}
+      <div className="ag-loopbar">
+        <span className="ag-eyebrow">Agent loop</span>
+        <span className="ag-tip" data-tip={TIPS.loop}>
+          ⓘ
+        </span>
+        <div className="ag-loopbar-track">
+          {LOOP.map((s, i) => (
+            <div key={s} className={`ag-loopstage ${s === step.loop ? 'on' : ''}`}>
+              <span className="ag-loopstage-n">{i + 1}</span>
+              {s}
+            </div>
+          ))}
+        </div>
+        <span className="ag-loopbar-iter">iteration {step.iter}</span>
       </div>
 
       {/* ── beam: agent ↔ subagents ── */}

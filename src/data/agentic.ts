@@ -271,9 +271,73 @@ export const STEPS: Step[] = [
 
 export const QUERY = 'Should NVIDIA acquire Cerebras? Give a recommendation backed by financial data, recent news, SEC filings, and market risks.'
 
+/* ── memory ─────────────────────────────────────────────────────────────
+ * Three memory types, and the teaching point is that they behave differently
+ * over a run: short-term fills up as scratch for this run and is cleared
+ * after; episodic logs what happened, successes and failures alike; long-term
+ * persists across runs and is mostly read, occasionally written to.
+ *
+ * `since` is the step an entry appears. Entries that pre-date the run (user
+ * preferences, durable facts, prior executions) use 0, so they are present
+ * from the first frame; everything else animates in as the run reaches it.
+ */
+export type MemoryType = 'short' | 'long' | 'epi'
+export type MemoryKind = 'success' | 'failure' | 'note'
+
+export interface MemoryEntry {
+  id: string
+  type: MemoryType
+  label: string
+  detail: string
+  since: number
+  kind?: MemoryKind
+}
+
+export const MEMORY_GROUPS: { type: MemoryType; name: string; tip: string }[] = [
+  {
+    type: 'short',
+    name: 'Short-term',
+    tip: 'Working memory for this run only: the conversation, intermediate reasoning, retrieved context and a scratchpad. Cleared once the run ends.',
+  },
+  {
+    type: 'long',
+    name: 'Long-term',
+    tip: 'Persists across runs: user preferences, durable facts and saved plans. Mostly read, occasionally written to.',
+  },
+  {
+    type: 'epi',
+    name: 'Episodic',
+    tip: 'A log of what actually happened: successful tool calls, retrieved documents, prior executions and failures. What the agent can learn from next time.',
+  },
+]
+
+export const MEMORY: MemoryEntry[] = [
+  // short-term — fills during the run
+  { id: 'm-conv', type: 'short', label: 'Conversation', since: 0, detail: 'User asked whether NVIDIA should acquire Cerebras, with a recommendation backed by evidence.' },
+  { id: 'm-reason', type: 'short', label: 'Intermediate reasoning', since: 2, detail: 'Query is too broad for one retrieval. Decompose into five parallel workstreams and run subagents.' },
+  { id: 'm-retr', type: 'short', label: 'Retrieved context', since: 8, detail: '12 comparable AI-chip acquisitions, the NVIDIA 10-K, and 3 analyst notes are now in context.' },
+  { id: 'm-scratch', type: 'short', label: 'Scratchpad', since: 10, detail: 'DCF fair value ≈ $38–44B. A $50B+ acquisition premium looks steep against that range.' },
+
+  // long-term — mostly persistent, one entry written at the end
+  { id: 'm-pref1', type: 'long', label: 'User preference', since: 0, detail: 'Prefers conservative, staged recommendations over aggressive all-or-nothing calls.' },
+  { id: 'm-pref2', type: 'long', label: 'User preference', since: 0, detail: 'Always wants claims backed by cited sources.' },
+  { id: 'm-fact1', type: 'long', label: 'Persistent fact', since: 0, detail: 'NVIDIA FY24: roughly $60.9B revenue, ~75% gross margin, a strong cash position.' },
+  { id: 'm-fact2', type: 'long', label: 'Persistent fact', since: 0, detail: 'Cerebras builds wafer-scale CS-3 accelerators and is still privately held.' },
+  { id: 'm-plan', type: 'long', label: 'Saved plan', since: 15, kind: 'note', detail: 'Saved a reusable acquisition due-diligence checklist distilled from this run, for next time.' },
+
+  // episodic — accumulates as the run happens, failures included
+  { id: 'm-prev', type: 'epi', label: 'Previous execution', since: 0, detail: 'An earlier run analysed the AMD–Xilinx merger; a similar antitrust pattern applies here.' },
+  { id: 'm-ok1', type: 'epi', label: 'Successful tool call', since: 8, kind: 'success', detail: 'vector_db.search returned 12 relevant hits in 120ms.' },
+  { id: 'm-fail', type: 'epi', label: 'Failure, recovered', since: 9, kind: 'failure', detail: 'web_search hit a rate limit, retried once with backoff, and then succeeded.' },
+  { id: 'm-ok2', type: 'epi', label: 'Successful tool call', since: 10, kind: 'success', detail: 'sec.get("10-K") and python.dcf() both completed and fed the scratchpad.' },
+  { id: 'm-docs', type: 'epi', label: 'Past retrieved documents', since: 11, detail: 'Cached the 10-K and analyst notes so a future run can reuse them without re-fetching.' },
+]
+
 /* short tooltips for each region, per the brief's educational requirement */
 export const TIPS = {
   agent: 'The orchestrator. It reasons, plans, calls tools, spawns subagents, and synthesises the final answer.',
+  memory: 'What the agent keeps. Short-term is scratch for this run, long-term persists across runs, episodic logs what happened. Click any entry to read it.',
+  planner: 'Breaks the goal into parallel tasks, one per subagent.',
   loop: 'The agent runs a loop: observe, think, plan, act, receive an observation, update memory, repeat.',
   tools: 'External capabilities the agent can invoke. Each call has a latency and a cost.',
   subagents: 'Specialised workers the main agent spawns to solve one focused subproblem in parallel.',
@@ -295,6 +359,8 @@ export interface World {
   subagents: Subagent[]
   toolCalls: Record<string, number>
   activeTools: Set<string>
+  /** memory entries visible at this step, in declaration order */
+  memory: MemoryEntry[]
   final?: FinalAnswer
 }
 
@@ -345,6 +411,7 @@ export function deriveWorld(index: number): World {
     subagents: [...subMap.values()],
     toolCalls,
     activeTools: new Set(cur.tools ?? []),
+    memory: MEMORY.filter((m) => m.since <= index),
     final,
   }
 }
