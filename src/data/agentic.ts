@@ -333,6 +333,196 @@ export const MEMORY: MemoryEntry[] = [
   { id: 'm-docs', type: 'epi', label: 'Past retrieved documents', since: 11, detail: 'Cached the 10-K and analyst notes so a future run can reuse them without re-fetching.' },
 ]
 
+/* ── per-agent detail: prompt, live context, tool trace ─────────────────
+ * Clicking an agent opens a modal with three tabs. The Prompt tab is static
+ * structure; the Context and Tool-call tabs are time-aware, filtered by the
+ * current step, so they fill in as the run proceeds and teach that an agent's
+ * context window is assembled live rather than fixed up front.
+ */
+export interface PromptSection {
+  label: string
+  body: string
+}
+export type ContextKind = 'system' | 'task' | 'memory' | 'retrieved' | 'observation' | 'note'
+export interface ContextBlock {
+  id: string
+  since: number
+  kind: ContextKind
+  label: string
+  body: string
+  tokens: number
+}
+export type CallStatus = 'ok' | 'retry' | 'error'
+export interface ToolCall {
+  id: string
+  since: number
+  call: string
+  latency: string
+  status: CallStatus
+  response: string
+  retries?: number
+}
+export interface AgentProfile {
+  id: string
+  name: string
+  role: string
+  color: string
+  prompt: PromptSection[]
+  task: string
+  context: ContextBlock[]
+  calls: ToolCall[]
+}
+
+/* Every agent shares the same house rules; only the role, tools and task
+   differ. Keeping the shared part in one place mirrors how a real system
+   templates its system prompts. */
+const HOUSE_RULES =
+  'Ground every claim in retrieved evidence and cite the source. State uncertainty explicitly. Do not fabricate figures. Return only the requested output format.'
+
+export const AGENT_PROFILES: Record<string, AgentProfile> = {
+  main: {
+    id: 'main',
+    name: 'Main Agent',
+    role: 'Orchestrator',
+    color: '#13251b',
+    prompt: [
+      { label: 'Role', body: 'You are the orchestrator. Decompose the user goal, delegate to specialised subagents, and synthesise one grounded recommendation.' },
+      { label: 'Tools', body: 'spawn_subagent(role, task), plus the full tool registry by delegation. You rarely call tools directly; you route work to subagents.' },
+      { label: 'Constraints', body: HOUSE_RULES + ' Prefer parallel subagents over a single long chain. Reconcile conflicting evidence before answering.' },
+      { label: 'Output format', body: 'A recommendation, a pros list, a cons list, and a calibrated confidence score with the data references behind it.' },
+    ],
+    task: 'Should NVIDIA acquire Cerebras? Provide a recommendation backed by financial data, recent news, SEC filings, and market risks.',
+    context: [
+      { id: 'c-sys', since: 0, kind: 'system', label: 'System prompt', body: 'Orchestrator role, tool registry, house rules.', tokens: 480 },
+      { id: 'c-task', since: 0, kind: 'task', label: 'User query', body: QUERY, tokens: 60 },
+      { id: 'c-mem', since: 0, kind: 'memory', label: 'Long-term memory', body: 'User prefers conservative, staged recommendations; wants cited sources. NVIDIA FY24 facts loaded.', tokens: 180 },
+      { id: 'c-plan', since: 2, kind: 'observation', label: 'Plan', body: 'Five workstreams: financial, news, SEC filings, competition, risk. Spawn one subagent each.', tokens: 120 },
+      { id: 'c-merge', since: 12, kind: 'observation', label: 'Subagent reports', body: 'Research, Financial, News and Risk have returned. Findings and confidence collected.', tokens: 2600 },
+      { id: 'c-final', since: 15, kind: 'observation', label: 'Synthesis', body: 'Reconciled evidence into a staged-investment recommendation at 92% confidence.', tokens: 340 },
+    ],
+    calls: [
+      { id: 'k-sp1', since: 3, call: 'spawn_subagent("research", …)', latency: '—', status: 'ok', response: 'Research Agent started' },
+      { id: 'k-sp2', since: 4, call: 'spawn_subagent("financial", …)', latency: '—', status: 'ok', response: 'Financial Agent started' },
+      { id: 'k-sp3', since: 5, call: 'spawn_subagent("news", …)', latency: '—', status: 'ok', response: 'News Agent started' },
+      { id: 'k-sp4', since: 6, call: 'spawn_subagent("risk", …)', latency: '—', status: 'ok', response: 'Risk Agent started' },
+      { id: 'k-sp5', since: 7, call: 'spawn_subagent("summary", …)', latency: '—', status: 'ok', response: 'Summary Agent started' },
+    ],
+  },
+  research: {
+    id: 'research',
+    name: 'Research Agent',
+    role: 'Comparable deals & market analysis',
+    color: '#2f6f4e',
+    prompt: [
+      { label: 'Role', body: 'You research comparable AI-chip acquisitions and market analysis relevant to a possible NVIDIA–Cerebras deal.' },
+      { label: 'Tools', body: 'vector_db.search(query, k) over the internal corpus of reports and prior deals.' },
+      { label: 'Constraints', body: HOUSE_RULES + ' Prefer primary reports over commentary.' },
+      { label: 'Output format', body: 'A short list of comparable deals with sizes and outcomes, and two or three market observations.' },
+    ],
+    task: 'Find comparable AI-accelerator acquisitions and summarise how the market treated them.',
+    context: [
+      { id: 'c-sys', since: 3, kind: 'system', label: 'System prompt', body: 'Research role, vector_db tool, house rules.', tokens: 320 },
+      { id: 'c-task', since: 3, kind: 'task', label: 'Task from planner', body: 'Find comparable AI-accelerator acquisitions and market treatment.', tokens: 40 },
+      { id: 'c-mem', since: 3, kind: 'memory', label: 'Injected fact', body: 'Prior run analysed AMD–Xilinx; reuse that framing.', tokens: 60 },
+      { id: 'c-ret', since: 8, kind: 'retrieved', label: 'vector_db → 12 hits', body: 'AMD–Xilinx ($49B), Intel–Habana ($2B), NVIDIA–Mellanox ($6.9B), and 9 more, with outcomes.', tokens: 1400 },
+      { id: 'c-obs', since: 12, kind: 'observation', label: 'Drafted finding', body: 'Large accelerator deals clear, but wafer-scale is unproven at NVIDIA’s scale.', tokens: 220 },
+    ],
+    calls: [{ id: 'k1', since: 8, call: 'vector_db.search("AI accelerator acquisitions", k=12)', latency: '120ms', status: 'ok', response: '12 documents, top score 0.86' }],
+  },
+  financial: {
+    id: 'financial',
+    name: 'Financial Agent',
+    role: 'Valuation & financial modelling',
+    color: '#8a6a3c',
+    prompt: [
+      { label: 'Role', body: 'You model the financials of the target and acquirer and estimate a fair value for the deal.' },
+      { label: 'Tools', body: 'sec.get(filing), python.run(code), calculator.eval(expr).' },
+      { label: 'Constraints', body: HOUSE_RULES + ' Show the assumptions behind any DCF. Flag when inputs are estimates.' },
+      { label: 'Output format', body: 'Key metrics (revenue, margin, cash, P/E, debt) and a DCF fair-value range with assumptions.' },
+    ],
+    task: 'Model NVIDIA and Cerebras financials and estimate a fair acquisition value.',
+    context: [
+      { id: 'c-sys', since: 4, kind: 'system', label: 'System prompt', body: 'Financial role, SEC + Python + calculator, house rules.', tokens: 340 },
+      { id: 'c-task', since: 4, kind: 'task', label: 'Task from planner', body: 'Model financials and estimate fair value.', tokens: 36 },
+      { id: 'c-mem', since: 4, kind: 'memory', label: 'Injected fact', body: 'NVIDIA FY24: ~$60.9B revenue, ~75% gross margin, strong cash.', tokens: 70 },
+      { id: 'c-ret', since: 10, kind: 'retrieved', label: 'sec → 10-K extract', body: 'Balance sheet, cash flow statement and segment revenue pulled from the latest 10-K.', tokens: 1800 },
+      { id: 'c-obs', since: 10, kind: 'observation', label: 'DCF result', body: 'Fair value ≈ $38–44B under base assumptions; a $50B+ premium looks steep.', tokens: 160 },
+    ],
+    calls: [
+      { id: 'k1', since: 10, call: 'sec.get("NVDA 10-K FY24")', latency: '640ms', status: 'ok', response: 'Filing retrieved, 214 pages' },
+      { id: 'k2', since: 10, call: 'python.run("dcf(cf, wacc=0.11, g=0.03)")', latency: '80ms', status: 'ok', response: '{ fair_value: [38.2, 43.9] }  # $B' },
+      { id: 'k3', since: 10, call: 'calculator.eval("50 / 41")', latency: '12ms', status: 'ok', response: '1.22  # ~22% over midpoint' },
+    ],
+  },
+  news: {
+    id: 'news',
+    name: 'News Agent',
+    role: 'Recent coverage & market reaction',
+    color: '#41708c',
+    prompt: [
+      { label: 'Role', body: 'You gather the most recent news, press releases and market reactions relevant to the deal.' },
+      { label: 'Tools', body: 'web_search(query), browser.open(url) for full articles.' },
+      { label: 'Constraints', body: HOUSE_RULES + ' Prefer the last 90 days. Note the date and outlet of each item.' },
+      { label: 'Output format', body: 'A dated list of the most relevant items with a one-line takeaway each.' },
+    ],
+    task: 'Summarise the latest coverage and market reaction to an NVIDIA–Cerebras deal.',
+    context: [
+      { id: 'c-sys', since: 5, kind: 'system', label: 'System prompt', body: 'News role, web_search + browser, house rules.', tokens: 300 },
+      { id: 'c-task', since: 5, kind: 'task', label: 'Task from planner', body: 'Summarise recent coverage and market reaction.', tokens: 34 },
+      { id: 'c-note', since: 9, kind: 'note', label: 'Recovered failure', body: 'web_search returned 429 (rate limited). Backed off and retried once; the retry succeeded.', tokens: 40 },
+      { id: 'c-ret', since: 9, kind: 'retrieved', label: 'web_search → 8 articles', body: 'Coverage of Cerebras funding, wafer-scale benchmarks, and analyst scepticism about integration.', tokens: 1100 },
+      { id: 'c-obs', since: 12, kind: 'observation', label: 'Drafted finding', body: 'Sentiment mixed: strong tech interest, real doubt about antitrust and integration.', tokens: 180 },
+    ],
+    calls: [
+      { id: 'k1', since: 9, call: 'web_search("NVIDIA Cerebras acquisition")', latency: '2.1s', status: 'retry', response: '429 Too Many Requests → retried → 200 OK', retries: 1 },
+      { id: 'k2', since: 9, call: 'browser.open("techwire.com/cerebras-cs3")', latency: '1.4s', status: 'ok', response: 'Article body extracted, 1,900 words' },
+    ],
+  },
+  risk: {
+    id: 'risk',
+    name: 'Risk Agent',
+    role: 'Antitrust, competition & geopolitics',
+    color: '#96565f',
+    prompt: [
+      { label: 'Role', body: 'You assess regulatory, competitive and geopolitical risk for the proposed acquisition.' },
+      { label: 'Tools', body: 'knowledge_graph.query(entity), sql.query(sql) over the regulatory case database.' },
+      { label: 'Constraints', body: HOUSE_RULES + ' Distinguish likelihood from severity for each risk.' },
+      { label: 'Output format', body: 'A ranked risk list, each with likelihood, severity and a supporting precedent.' },
+    ],
+    task: 'Assess antitrust, competition and geopolitical risk for the deal.',
+    context: [
+      { id: 'c-sys', since: 6, kind: 'system', label: 'System prompt', body: 'Risk role, knowledge_graph + sql, house rules.', tokens: 320 },
+      { id: 'c-task', since: 6, kind: 'task', label: 'Task from planner', body: 'Assess antitrust, competition and geopolitical risk.', tokens: 36 },
+      { id: 'c-ret', since: 11, kind: 'retrieved', label: 'kg → antitrust precedents', body: 'Regulators scrutinise accelerator consolidation; NVIDIA already dominant in AI training silicon.', tokens: 1200 },
+      { id: 'c-obs', since: 12, kind: 'observation', label: 'Drafted finding', body: 'Antitrust is the dominant risk: high likelihood of a lengthy review, moderate-to-high severity.', tokens: 200 },
+    ],
+    calls: [
+      { id: 'k1', since: 11, call: 'knowledge_graph.query("antitrust AI accelerators")', latency: '180ms', status: 'ok', response: '9 precedents, 3 highly relevant' },
+      { id: 'k2', since: 11, call: 'sql.query("SELECT * FROM reviews WHERE sector=\'semiconductors\'")', latency: '210ms', status: 'ok', response: '31 rows' },
+    ],
+  },
+  summary: {
+    id: 'summary',
+    name: 'Summary Agent',
+    role: 'Evidence merge & recommendation',
+    color: '#13251b',
+    prompt: [
+      { label: 'Role', body: 'You merge the other agents’ findings into one recommendation with a calibrated confidence score.' },
+      { label: 'Tools', body: 'None. You reason over the collected subagent outputs; you do not call external tools.' },
+      { label: 'Constraints', body: HOUSE_RULES + ' Weight evidence by source reliability. Surface disagreements rather than averaging them away.' },
+      { label: 'Output format', body: 'Recommendation, pros, cons, and a confidence score, each tied to the evidence behind it.' },
+    ],
+    task: 'Merge all findings, score confidence, and produce the final recommendation.',
+    context: [
+      { id: 'c-sys', since: 7, kind: 'system', label: 'System prompt', body: 'Summary role, no tools, house rules.', tokens: 280 },
+      { id: 'c-task', since: 7, kind: 'task', label: 'Task from planner', body: 'Merge findings, score confidence, recommend.', tokens: 34 },
+      { id: 'c-in', since: 13, kind: 'observation', label: 'All subagent reports', body: 'Research, Financial, News and Risk findings assembled into one evidence set.', tokens: 2800 },
+      { id: 'c-obs', since: 14, kind: 'observation', label: 'Evidence graph', body: 'Built an evidence graph; the antitrust and premium cons outweigh an immediate buy.', tokens: 360 },
+    ],
+    calls: [],
+  },
+}
+
 /* short tooltips for each region, per the brief's educational requirement */
 export const TIPS = {
   agent: 'The orchestrator. It reasons, plans, calls tools, spawns subagents, and synthesises the final answer.',

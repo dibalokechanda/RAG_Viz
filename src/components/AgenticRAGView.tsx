@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { LOOP, MEMORY_GROUPS, QUERY, STEPS, TIPS, TOOLS, deriveWorld } from '../data/agentic'
+import { AGENT_PROFILES, LOOP, MEMORY_GROUPS, QUERY, STEPS, TIPS, TOOLS, deriveWorld } from '../data/agentic'
+import AgentModal from './AgentModal'
 
 /*
  * Agentic RAG dashboard. A single step index drives everything: deriveWorld
@@ -18,6 +19,7 @@ export default function AgenticRAGView() {
   const [speed, setSpeed] = useState(1)
   const [showThoughts, setShowThoughts] = useState(true)
   const [openMem, setOpenMem] = useState<Set<string>>(new Set())
+  const [openAgent, setOpenAgent] = useState<string | null>(null)
   const timelineRef = useRef<HTMLDivElement>(null)
 
   const world = deriveWorld(idx)
@@ -152,6 +154,9 @@ export default function AgenticRAGView() {
         <div className={`ag-agent ${step.state === 'done' ? 'done' : ''}`}>
           <header className="ag-agent-head">
             <span className="ag-eyebrow light">Agent · orchestrator</span>
+            <button className="ag-inspect" onClick={() => setOpenAgent('main')} title="Inspect prompt, context and tool calls">
+              inspect ⤢
+            </button>
             <span className="ag-tip light" data-tip={TIPS.agent}>
               ⓘ
             </span>
@@ -260,7 +265,13 @@ export default function AgenticRAGView() {
         ) : (
           <div className="ag-sub-grid">
             {subagents.map((s) => (
-              <article key={s.id} className={`ag-sub ${s.status}`} style={{ ['--sub' as string]: s.color }}>
+              <button
+                key={s.id}
+                className={`ag-sub ${s.status}`}
+                style={{ ['--sub' as string]: s.color }}
+                onClick={() => setOpenAgent(s.id)}
+                title="Inspect prompt, context and tool calls"
+              >
                 <div className="ag-sub-top">
                   <span className="ag-sub-name">{s.name}</span>
                   <span className={`ag-sub-status ${s.status}`}>{s.status}</span>
@@ -273,7 +284,8 @@ export default function AgenticRAGView() {
                 <div className="ag-sub-bar">
                   <span style={{ width: `${s.progress}%` }} />
                 </div>
-              </article>
+                <span className="ag-sub-inspect">inspect ⤢</span>
+              </button>
             ))}
           </div>
         )}
@@ -359,6 +371,16 @@ export default function AgenticRAGView() {
           </button>
         </div>
       </div>
+
+      {openAgent && AGENT_PROFILES[openAgent] && (
+        <AgentModal
+          profile={AGENT_PROFILES[openAgent]}
+          stepIndex={idx}
+          timeLabel={step.t}
+          playing={playing}
+          onClose={() => setOpenAgent(null)}
+        />
+      )}
     </div>
   )
 }
