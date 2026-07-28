@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AGENT_PROFILES, LOOP, MEMORY_GROUPS, QUERY, STEPS, TIPS, TOOLS, TOOL_DETAILS, deriveWorld } from '../data/agentic'
+import { AGENT_PROFILES, LOOP, MEMORY_GROUPS, QUERY, SHORT_TERM_BUDGET, STEPS, TIPS, TOOLS, TOOL_DETAILS, deriveWorld, memoryOps } from '../data/agentic'
 import AgentModal from './AgentModal'
 import ToolModal from './ToolModal'
 
@@ -65,6 +65,13 @@ export default function AgenticRAGView() {
   const toolUsed = (id: string) => (toolCalls[id] ?? 0) > 0
   const anySubWorking = subagents.some((s) => s.status === 'working' || s.status === 'spawning')
 
+  // memory dynamics: the op stream, what is being read right now, and the
+  // short-term working-memory pressure
+  const ops = memoryOps(idx)
+  const recentOps = ops.slice(-3)
+  const readNow = new Set(ops.filter((o) => o.op === 'read' && o.step === idx).map((o) => o.entryId))
+  const shortTokens = memory.filter((m) => m.type === 'short').reduce((n, m) => n + m.tokens, 0)
+
   return (
     <div className="ag-view">
       {/* ── query ── */}
@@ -122,7 +129,29 @@ export default function AgenticRAGView() {
             <span className="ag-tip" data-tip={TIPS.memory}>
               ⓘ
             </span>
+            <span className="ag-mem-total">{ops.length} ops</span>
           </header>
+
+          {/* live read / write activity */}
+          <div className="ag-mem-ops">
+            <span className="ag-mem-ops-h">Read · write activity</span>
+            {recentOps.length === 0 ? (
+              <p className="ag-mem-ops-empty">waiting for the first write</p>
+            ) : (
+              <ul>
+                {recentOps.map((o, i) => (
+                  <li key={i} className={`ag-mem-op ${o.op} ${o.step === idx ? 'now' : ''}`}>
+                    <span className="ag-mem-op-t">{o.t}</span>
+                    <span className={`ag-mem-op-tag ${o.op}`}>{o.op}</span>
+                    <span className={`ag-mem-op-dot ${o.type}`} />
+                    <span className="ag-mem-op-label">{o.label}</span>
+                    <span className="ag-mem-op-agent">{o.op === 'read' ? `→ ${o.agent}` : o.agent}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <div className="ag-mem-scroll">
             {MEMORY_GROUPS.map((g) => {
               const entries = memory.filter((m) => m.type === g.type)
@@ -133,14 +162,20 @@ export default function AgenticRAGView() {
                     <span className="ag-tip" data-tip={g.tip}>
                       ⓘ
                     </span>
+                    {g.type === 'short' && (
+                      <span className="ag-mem-meter" title={`${shortTokens.toLocaleString()} / ${SHORT_TERM_BUDGET.toLocaleString()} working tokens`}>
+                        <span style={{ width: `${Math.min(100, (shortTokens / SHORT_TERM_BUDGET) * 100)}%` }} />
+                      </span>
+                    )}
                     <span className="ag-mem-gcount">{entries.length}</span>
                   </div>
                   {entries.map((m) => {
                     const open = openMem.has(m.id)
+                    const reads = (m.reads ?? []).filter((r) => r.step <= idx)
                     return (
                       <button
                         key={m.id}
-                        className={`ag-mem-entry ${m.type} ${open ? 'open' : ''} ${m.since === idx && idx > 0 ? 'fresh' : ''}`}
+                        className={`ag-mem-entry ${m.type} ${open ? 'open' : ''} ${m.since === idx && idx > 0 ? 'fresh' : ''} ${readNow.has(m.id) ? 'reading' : ''}`}
                         onClick={() => toggleMem(m.id)}
                       >
                         <span className="ag-mem-row">
@@ -148,9 +183,20 @@ export default function AgenticRAGView() {
                             {m.kind === 'success' ? '✓' : m.kind === 'failure' ? '!' : m.kind === 'note' ? '+' : '•'}
                           </span>
                           <span className="ag-mem-label">{m.label}</span>
+                          {readNow.has(m.id) && <span className="ag-mem-readnow">read</span>}
                           <span className="ag-mem-caret">{open ? '−' : '+'}</span>
                         </span>
-                        {open && <span className="ag-mem-detail">{m.detail}</span>}
+                        {open && (
+                          <span className="ag-mem-body">
+                            <span className="ag-mem-detail">{m.detail}</span>
+                            <span className="ag-mem-meta">
+                              written t={STEPS[m.since].t} · by {m.source} · {m.tokens.toLocaleString()} tok
+                            </span>
+                            <span className="ag-mem-reads">
+                              {reads.length === 0 ? 'not read yet' : `read by ${reads.map((r) => `${r.agent} (t=${STEPS[r.step].t})`).join(', ')}`}
+                            </span>
+                          </span>
+                        )}
                       </button>
                     )
                   })}

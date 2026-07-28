@@ -284,14 +284,27 @@ export const QUERY = 'Should NVIDIA acquire Cerebras? Give a recommendation back
 export type MemoryType = 'short' | 'long' | 'epi'
 export type MemoryKind = 'success' | 'failure' | 'note'
 
+export interface MemoryRead {
+  step: number
+  agent: string
+}
 export interface MemoryEntry {
   id: string
   type: MemoryType
   label: string
   detail: string
   since: number
+  /** who wrote it */
+  source: string
+  /** rough size, drives the working-memory meter */
+  tokens: number
+  /** when it was read back into an agent's context, and by whom */
+  reads?: MemoryRead[]
   kind?: MemoryKind
 }
+
+/** Short-term is working memory under a fixed budget; the meter shows pressure. */
+export const SHORT_TERM_BUDGET = 8000
 
 export const MEMORY_GROUPS: { type: MemoryType; name: string; tip: string }[] = [
   {
@@ -312,26 +325,58 @@ export const MEMORY_GROUPS: { type: MemoryType; name: string; tip: string }[] = 
 ]
 
 export const MEMORY: MemoryEntry[] = [
-  // short-term — fills during the run
-  { id: 'm-conv', type: 'short', label: 'Conversation', since: 0, detail: 'User asked whether NVIDIA should acquire Cerebras, with a recommendation backed by evidence.' },
-  { id: 'm-reason', type: 'short', label: 'Intermediate reasoning', since: 2, detail: 'Query is too broad for one retrieval. Decompose into five parallel workstreams and run subagents.' },
-  { id: 'm-retr', type: 'short', label: 'Retrieved context', since: 8, detail: '12 comparable AI-chip acquisitions, the NVIDIA 10-K, and 3 analyst notes are now in context.' },
-  { id: 'm-scratch', type: 'short', label: 'Scratchpad', since: 10, detail: 'DCF fair value ≈ $38–44B. A $50B+ acquisition premium looks steep against that range.' },
+  // short-term — fills during the run, written by whoever produced it
+  { id: 'm-conv', type: 'short', label: 'Conversation', since: 0, source: 'User', tokens: 60, reads: [{ step: 2, agent: 'Main Agent' }], detail: 'User asked whether NVIDIA should acquire Cerebras, with a recommendation backed by evidence.' },
+  { id: 'm-reason', type: 'short', label: 'Intermediate reasoning', since: 2, source: 'Main Agent', tokens: 120, reads: [{ step: 3, agent: 'Main Agent' }], detail: 'Query is too broad for one retrieval. Decompose into five parallel workstreams and run subagents.' },
+  { id: 'm-retr', type: 'short', label: 'Retrieved context', since: 8, source: 'Research Agent', tokens: 1400, reads: [{ step: 13, agent: 'Summary Agent' }], detail: '12 comparable AI-chip acquisitions, the NVIDIA 10-K, and 3 analyst notes are now in context.' },
+  { id: 'm-scratch', type: 'short', label: 'Scratchpad', since: 10, source: 'Financial Agent', tokens: 160, reads: [{ step: 13, agent: 'Summary Agent' }], detail: 'DCF fair value ≈ $38–44B. A $50B+ acquisition premium looks steep against that range.' },
 
-  // long-term — mostly persistent, one entry written at the end
-  { id: 'm-pref1', type: 'long', label: 'User preference', since: 0, detail: 'Prefers conservative, staged recommendations over aggressive all-or-nothing calls.' },
-  { id: 'm-pref2', type: 'long', label: 'User preference', since: 0, detail: 'Always wants claims backed by cited sources.' },
-  { id: 'm-fact1', type: 'long', label: 'Persistent fact', since: 0, detail: 'NVIDIA FY24: roughly $60.9B revenue, ~75% gross margin, a strong cash position.' },
-  { id: 'm-fact2', type: 'long', label: 'Persistent fact', since: 0, detail: 'Cerebras builds wafer-scale CS-3 accelerators and is still privately held.' },
-  { id: 'm-plan', type: 'long', label: 'Saved plan', since: 15, kind: 'note', detail: 'Saved a reusable acquisition due-diligence checklist distilled from this run, for next time.' },
+  // long-term — mostly persistent, mostly read, one entry written at the end
+  { id: 'm-pref1', type: 'long', label: 'User preference', since: 0, source: 'persisted', tokens: 40, reads: [{ step: 0, agent: 'Main Agent' }, { step: 14, agent: 'Summary Agent' }], detail: 'Prefers conservative, staged recommendations over aggressive all-or-nothing calls.' },
+  { id: 'm-pref2', type: 'long', label: 'User preference', since: 0, source: 'persisted', tokens: 30, reads: [{ step: 0, agent: 'Main Agent' }], detail: 'Always wants claims backed by cited sources.' },
+  { id: 'm-fact1', type: 'long', label: 'Persistent fact', since: 0, source: 'persisted', tokens: 70, reads: [{ step: 10, agent: 'Financial Agent' }], detail: 'NVIDIA FY24: roughly $60.9B revenue, ~75% gross margin, a strong cash position.' },
+  { id: 'm-fact2', type: 'long', label: 'Persistent fact', since: 0, source: 'persisted', tokens: 50, reads: [{ step: 8, agent: 'Research Agent' }, { step: 9, agent: 'News Agent' }], detail: 'Cerebras builds wafer-scale CS-3 accelerators and is still privately held.' },
+  { id: 'm-plan', type: 'long', label: 'Saved plan', since: 15, source: 'Main Agent', tokens: 90, kind: 'note', detail: 'Saved a reusable acquisition due-diligence checklist distilled from this run, for next time.' },
 
   // episodic — accumulates as the run happens, failures included
-  { id: 'm-prev', type: 'epi', label: 'Previous execution', since: 0, detail: 'An earlier run analysed the AMD–Xilinx merger; a similar antitrust pattern applies here.' },
-  { id: 'm-ok1', type: 'epi', label: 'Successful tool call', since: 8, kind: 'success', detail: 'vector_db.search returned 12 relevant hits in 120ms.' },
-  { id: 'm-fail', type: 'epi', label: 'Failure, recovered', since: 9, kind: 'failure', detail: 'web_search hit a rate limit, retried once with backoff, and then succeeded.' },
-  { id: 'm-ok2', type: 'epi', label: 'Successful tool call', since: 10, kind: 'success', detail: 'sec.get("10-K") and python.dcf() both completed and fed the scratchpad.' },
-  { id: 'm-docs', type: 'epi', label: 'Past retrieved documents', since: 11, detail: 'Cached the 10-K and analyst notes so a future run can reuse them without re-fetching.' },
+  { id: 'm-prev', type: 'epi', label: 'Previous execution', since: 0, source: 'persisted', tokens: 80, reads: [{ step: 8, agent: 'Research Agent' }], detail: 'An earlier run analysed the AMD–Xilinx merger; a similar antitrust pattern applies here.' },
+  { id: 'm-ok1', type: 'epi', label: 'Successful tool call', since: 8, source: 'Research Agent', tokens: 30, kind: 'success', detail: 'vector_db.search returned 12 relevant hits in 120ms.' },
+  { id: 'm-fail', type: 'epi', label: 'Failure, recovered', since: 9, source: 'News Agent', tokens: 40, kind: 'failure', detail: 'web_search hit a rate limit, retried once with backoff, and then succeeded.' },
+  { id: 'm-ok2', type: 'epi', label: 'Successful tool call', since: 10, source: 'Financial Agent', tokens: 36, kind: 'success', detail: 'sec.get("10-K") and python.dcf() both completed and fed the scratchpad.' },
+  { id: 'm-docs', type: 'epi', label: 'Past retrieved documents', since: 11, source: 'Financial Agent', tokens: 60, detail: 'Cached the 10-K and analyst notes so a future run can reuse them without re-fetching.' },
 ]
+
+/* ── memory as a stream of operations ───────────────────────────────────
+ * The teaching point the flat list misses: memory is written and read
+ * continuously. This flattens the entries into a chronological op log, so
+ * the panel can show what was written or read at each step, and by whom.
+ */
+export interface MemoryOp {
+  step: number
+  t: string
+  op: 'write' | 'read'
+  type: MemoryType
+  label: string
+  agent: string
+  entryId: string
+}
+
+export function memoryOps(index: number): MemoryOp[] {
+  const ops: MemoryOp[] = []
+  for (const m of MEMORY) {
+    if (m.since <= index) {
+      ops.push({ step: m.since, t: STEPS[m.since].t, op: 'write', type: m.type, label: m.label, agent: m.source, entryId: m.id })
+    }
+    for (const r of m.reads ?? []) {
+      if (r.step <= index) {
+        ops.push({ step: r.step, t: STEPS[r.step].t, op: 'read', type: m.type, label: m.label, agent: r.agent, entryId: m.id })
+      }
+    }
+  }
+  // chronological; writes before reads within the same step
+  ops.sort((a, b) => a.step - b.step || (a.op === b.op ? 0 : a.op === 'write' ? -1 : 1))
+  return ops
+}
 
 /* ── per-agent detail: prompt, live context, tool trace ─────────────────
  * Clicking an agent opens a modal with three tabs. The Prompt tab is static
