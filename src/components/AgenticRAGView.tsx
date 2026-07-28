@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { AGENT_PROFILES, LOOP, MEMORY_GROUPS, QUERY, STEPS, TIPS, TOOLS, deriveWorld } from '../data/agentic'
+import { AGENT_PROFILES, LOOP, MEMORY_GROUPS, QUERY, STEPS, TIPS, TOOLS, TOOL_DETAILS, deriveWorld } from '../data/agentic'
 import AgentModal from './AgentModal'
+import ToolModal from './ToolModal'
 
 /*
  * Agentic RAG dashboard. A single step index drives everything: deriveWorld
@@ -20,6 +21,7 @@ export default function AgenticRAGView() {
   const [showThoughts, setShowThoughts] = useState(true)
   const [openMem, setOpenMem] = useState<Set<string>>(new Set())
   const [openAgent, setOpenAgent] = useState<string | null>(null)
+  const [openTool, setOpenTool] = useState<string | null>(null)
   const timelineRef = useRef<HTMLDivElement>(null)
 
   const world = deriveWorld(idx)
@@ -81,7 +83,12 @@ export default function AgenticRAGView() {
         </header>
         <div className="ag-tool-row">
           {TOOLS.map((t) => (
-            <div key={t.id} className={`ag-tool ${toolActive(t.id) ? 'active' : toolUsed(t.id) ? 'used' : ''}`}>
+            <button
+              key={t.id}
+              className={`ag-tool ${toolActive(t.id) ? 'active' : toolUsed(t.id) ? 'used' : ''}`}
+              onClick={() => setOpenTool(t.id)}
+              title="Inspect schema, Python and calls"
+            >
               <div className="ag-tool-top">
                 <span className="ag-tool-name">{t.label}</span>
                 <span className={`ag-dot ${toolActive(t.id) ? 'on' : toolUsed(t.id) ? 'done' : ''}`} />
@@ -90,8 +97,11 @@ export default function AgenticRAGView() {
                 <span>{t.latency}</span>
                 <span className="ag-cost">{'$'.repeat(t.cost)}</span>
               </div>
-              <div className="ag-tool-calls">{toolCalls[t.id] ?? 0} calls</div>
-            </div>
+              <div className="ag-tool-foot">
+                <span className="ag-tool-calls">{toolCalls[t.id] ?? 0} calls</span>
+                <span className="ag-tool-inspect">inspect ⤢</span>
+              </div>
+            </button>
           ))}
         </div>
       </section>
@@ -379,6 +389,17 @@ export default function AgenticRAGView() {
           timeLabel={step.t}
           playing={playing}
           onClose={() => setOpenAgent(null)}
+        />
+      )}
+
+      {openTool && TOOL_DETAILS[openTool] && (
+        <ToolModal
+          tool={TOOLS.find((t) => t.id === openTool)!}
+          detail={TOOL_DETAILS[openTool]}
+          stepIndex={idx}
+          timeLabel={step.t}
+          playing={playing}
+          onClose={() => setOpenTool(null)}
         />
       )}
     </div>

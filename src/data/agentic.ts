@@ -523,6 +523,206 @@ export const AGENT_PROFILES: Record<string, AgentProfile> = {
   },
 }
 
+/* ── per-tool detail: schema, implementation, call log ──────────────────
+ * Clicking a tool opens a modal with the schema the model sees, the raw
+ * Python that implements it, and the same LangGraph wiring every tool shares
+ * (bind_tools + a ToolNode in the agent loop). The Calls tab is step-filtered
+ * so it fills in live, like the agent inspector.
+ */
+export interface ToolParam {
+  name: string
+  type: string
+  desc: string
+}
+export interface ToolCallLog {
+  agent: string
+  since: number
+  call: string
+  latency: string
+  status: CallStatus
+  response: string
+  retries?: number
+}
+export interface ToolDetail {
+  summary: string
+  description: string
+  params: ToolParam[]
+  returns: string
+  code: string
+  calls: ToolCallLog[]
+}
+
+/* The wiring is identical for every tool: bind the whole set to the model and
+   run them from a ToolNode inside the agent loop. Shown per tool with that
+   tool featured, so the shared pattern is obvious. */
+const wiring = (fn: string) => `# ── Register with a LangGraph agent ──
+from langgraph.graph import StateGraph, MessagesState, START
+from langgraph.prebuilt import ToolNode, tools_condition
+from langchain_openai import ChatOpenAI
+
+tools = [${fn}, ...]                       # every @tool in the registry
+llm   = ChatOpenAI(model="gpt-4o").bind_tools(tools)
+
+def agent(state: MessagesState):
+    return {"messages": [llm.invoke(state["messages"])]}
+
+graph = StateGraph(MessagesState)
+graph.add_node("agent", agent)
+graph.add_node("tools", ToolNode(tools))   # calls ${fn} when the model asks
+graph.add_edge(START, "agent")
+graph.add_conditional_edges("agent", tools_condition)  # agent <-> tools loop
+graph.add_edge("tools", "agent")
+app = graph.compile()`
+
+export const TOOL_DETAILS: Record<string, ToolDetail> = {
+  vectordb: {
+    summary: 'Semantic search over the internal report corpus.',
+    description: 'Semantic search over the internal corpus of reports and prior deals. Returns the top-k chunks with similarity scores.',
+    params: [
+      { name: 'query', type: 'str', desc: 'Natural-language search query.' },
+      { name: 'k', type: 'int = 8', desc: 'How many chunks to return.' },
+    ],
+    returns: 'list[dict] — {text, score} per hit',
+    code: `from langchain_core.tools import tool
+
+@tool
+def search_documents(query: str, k: int = 8) -> list[dict]:
+    """Semantic search over the internal report corpus.
+    Returns the top-k chunks with their similarity scores."""
+    q = embed(query)                       # text-embedding-3-large
+    hits = vector_store.similarity_search_by_vector(q, k=k)
+    return [{"text": h.page_content, "score": h.score} for h in hits]
+
+${wiring('search_documents')}`,
+    calls: [{ agent: 'Research Agent', since: 8, call: 'search_documents("AI accelerator acquisitions", k=12)', latency: '120ms', status: 'ok', response: '12 documents, top score 0.86' }],
+  },
+  websearch: {
+    summary: 'Recent public-web articles and press releases.',
+    description: 'Search the public web for recent articles, press releases and market reactions. Biased to the last 90 days.',
+    params: [
+      { name: 'query', type: 'str', desc: 'Search query.' },
+      { name: 'recency_days', type: 'int = 90', desc: 'Only return items newer than this.' },
+    ],
+    returns: 'list[dict] — {title, url, snippet}',
+    code: `from langchain_core.tools import tool
+
+@tool
+def web_search(query: str, recency_days: int = 90) -> list[dict]:
+    """Search the public web for recent articles and press releases."""
+    resp = tavily.search(query, days=recency_days, max_results=8)
+    return [
+        {"title": r["title"], "url": r["url"], "snippet": r["content"]}
+        for r in resp["results"]
+    ]
+
+${wiring('web_search')}`,
+    calls: [
+      { agent: 'News Agent', since: 9, call: 'web_search("NVIDIA Cerebras acquisition")', latency: '2.1s', status: 'retry', response: '429 Too Many Requests -> retried -> 200 OK', retries: 1 },
+    ],
+  },
+  sec: {
+    summary: 'Fetch the latest SEC filing text.',
+    description: 'Fetch and extract the text of the latest SEC filing for a ticker (10-K, 10-Q, 8-K).',
+    params: [
+      { name: 'ticker', type: 'str', desc: 'e.g. "NVDA".' },
+      { name: 'form', type: 'str = "10-K"', desc: 'Filing type.' },
+    ],
+    returns: 'str — extracted filing text',
+    code: `from langchain_core.tools import tool
+
+@tool
+def get_filing(ticker: str, form: str = "10-K") -> str:
+    """Fetch the latest SEC filing text for a ticker (10-K, 10-Q, 8-K)."""
+    url = edgar.latest(ticker, form)
+    return edgar.extract_text(url)
+
+${wiring('get_filing')}`,
+    calls: [{ agent: 'Financial Agent', since: 10, call: 'get_filing("NVDA", "10-K")', latency: '640ms', status: 'ok', response: 'Filing retrieved, 214 pages' }],
+  },
+  python: {
+    summary: 'Run Python in a sandbox.',
+    description: 'Execute Python in an isolated sandbox and return stdout. Used for financial modelling such as a DCF.',
+    params: [{ name: 'code', type: 'str', desc: 'Python source to execute.' }],
+    returns: 'str — captured stdout',
+    code: `from langchain_core.tools import tool
+
+@tool
+def run_python(code: str) -> str:
+    """Execute Python in a sandbox and return stdout. Use for DCF and modelling."""
+    return sandbox.exec(code, timeout=30)   # no network, 512MB, 30s cap
+
+${wiring('run_python')}`,
+    calls: [{ agent: 'Financial Agent', since: 10, call: 'run_python("dcf(cf, wacc=0.11, g=0.03)")', latency: '80ms', status: 'ok', response: '{ fair_value: [38.2, 43.9] }  # $B' }],
+  },
+  calculator: {
+    summary: 'Evaluate an arithmetic expression.',
+    description: 'Safely evaluate a single arithmetic expression. No variables, no side effects.',
+    params: [{ name: 'expression', type: 'str', desc: 'e.g. "50 / 41".' }],
+    returns: 'float',
+    code: `from langchain_core.tools import tool
+import numexpr
+
+@tool
+def calculator(expression: str) -> float:
+    """Evaluate an arithmetic expression safely."""
+    return float(numexpr.evaluate(expression).item())
+
+${wiring('calculator')}`,
+    calls: [{ agent: 'Financial Agent', since: 10, call: 'calculator("50 / 41")', latency: '12ms', status: 'ok', response: '1.22  # ~22% over midpoint' }],
+  },
+  sql: {
+    summary: 'Read-only SQL over the case database.',
+    description: 'Run a read-only SQL query against the regulatory case database. Writes are rejected.',
+    params: [{ name: 'query', type: 'str', desc: 'A SELECT statement.' }],
+    returns: 'list[dict] — rows',
+    code: `from langchain_core.tools import tool
+from sqlalchemy import text
+
+@tool
+def sql_query(query: str) -> list[dict]:
+    """Run a read-only SQL query against the regulatory case database."""
+    assert query.strip().lower().startswith("select"), "read-only"
+    with engine.connect() as c:
+        return [dict(r) for r in c.execute(text(query))]
+
+${wiring('sql_query')}`,
+    calls: [{ agent: 'Risk Agent', since: 11, call: 'sql_query("SELECT * FROM reviews WHERE sector=\'semiconductors\'")', latency: '210ms', status: 'ok', response: '31 rows' }],
+  },
+  kg: {
+    summary: 'Query the knowledge graph.',
+    description: 'Look up entities and their related precedents in the regulatory knowledge graph.',
+    params: [{ name: 'entity', type: 'str', desc: 'Entity name to expand from.' }],
+    returns: 'list[dict] — neighbours and edges',
+    code: `from langchain_core.tools import tool
+
+@tool
+def kg_query(entity: str) -> list[dict]:
+    """Look up related precedents and edges for an entity in the knowledge graph."""
+    cypher = "MATCH (e {name: $n})-[r]-(m) RETURN m, r LIMIT 25"
+    return graph.run(cypher, n=entity).data()
+
+${wiring('kg_query')}`,
+    calls: [{ agent: 'Risk Agent', since: 11, call: 'kg_query("antitrust AI accelerators")', latency: '180ms', status: 'ok', response: '9 precedents, 3 highly relevant' }],
+  },
+  browser: {
+    summary: 'Open a URL and extract article text.',
+    description: 'Open a URL in a headless browser and return the readable article text. Used to read full articles found by web search.',
+    params: [{ name: 'url', type: 'str', desc: 'The page to open.' }],
+    returns: 'str — extracted article text',
+    code: `from langchain_core.tools import tool
+
+@tool
+def open_url(url: str) -> str:
+    """Open a URL in a headless browser and return the extracted article text."""
+    page = browser.new_page()
+    page.goto(url, wait_until="networkidle")
+    return readability(page.content())      # strips nav, ads, boilerplate
+
+${wiring('open_url')}`,
+    calls: [{ agent: 'News Agent', since: 9, call: 'open_url("techwire.com/cerebras-cs3")', latency: '1.4s', status: 'ok', response: 'Article body extracted, 1,900 words' }],
+  },
+}
+
 /* short tooltips for each region, per the brief's educational requirement */
 export const TIPS = {
   agent: 'The orchestrator. It reasons, plans, calls tools, spawns subagents, and synthesises the final answer.',
