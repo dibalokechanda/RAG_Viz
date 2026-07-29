@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AGENT_PROFILES, LOOP, MEMORY_GROUPS, QUERY, SHORT_TERM_BUDGET, STEPS, TIPS, TOOLS, TOOL_DETAILS, deriveWorld, memoryOps } from '../data/agentic'
 import AgentModal from './AgentModal'
 import ToolModal from './ToolModal'
+import GraphView from './GraphView'
 
 /*
  * Agentic RAG dashboard. A single step index drives everything: deriveWorld
@@ -22,6 +23,7 @@ export default function AgenticRAGView() {
   const [openMem, setOpenMem] = useState<Set<string>>(new Set())
   const [openAgent, setOpenAgent] = useState<string | null>(null)
   const [openTool, setOpenTool] = useState<string | null>(null)
+  const [graphOpen, setGraphOpen] = useState(false)
   const timelineRef = useRef<HTMLDivElement>(null)
 
   const world = deriveWorld(idx)
@@ -76,7 +78,13 @@ export default function AgenticRAGView() {
     <div className="ag-view">
       {/* ── query ── */}
       <div className="ag-query">
-        <span className="ag-eyebrow">User query</span>
+        <div className="ag-query-head">
+          <span className="ag-eyebrow">User query</span>
+          <button className="ag-graph-btn" onClick={() => setGraphOpen(true)} title="Open the live execution graph">
+            <span className="ag-graph-glyph">⤨</span>
+            Graph view
+          </button>
+        </div>
         <p>{QUERY}</p>
       </div>
 
@@ -446,6 +454,17 @@ export default function AgenticRAGView() {
           timeLabel={step.t}
           playing={playing}
           onClose={() => setOpenTool(null)}
+        />
+      )}
+
+      {graphOpen && (
+        <GraphView
+          world={world}
+          last={last}
+          playing={playing}
+          onGo={go}
+          onToggle={() => (idx >= last ? replay() : setPlaying((p) => !p))}
+          onClose={() => setGraphOpen(false)}
         />
       )}
     </div>
