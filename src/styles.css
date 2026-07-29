@@ -4883,3 +4883,44 @@ body {
   .gv-svg { min-width: 620px; }
   .gv-head-text p { display: none; }
 }
+
+/* ── Graph view: persistence layer (state channel + store) ── */
+.gv-persist-h {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.gv-persist-sub {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  fill: #a49c92;
+}
+.gv-persist-k {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  fill: var(--ink);
+}
+.gv-persist-reducer,
+.gv-persist-count {
+  font-family: var(--mono);
+  font-size: 9px;
+  fill: #8b857c;
+}
+.gv-persist-note {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  fill: #a49c92;
+}
+.gv-persist-live {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+.gv-persist.hot { animation: gv-persist-pulse 1.4s ease-in-out infinite; }
+@keyframes gv-persist-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
