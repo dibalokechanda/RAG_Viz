@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SUBAGENTS, memoryOps, type World } from '../data/agentic'
+import PersistModal from './PersistModal'
 
 /*
  * A live LangGraph-style view of the run, drawn as the compiled StateGraph.
@@ -109,9 +110,14 @@ export default function GraphView({
   const { index: idx, step, subagents } = world
   const dialogRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
+  const [openPersist, setOpenPersist] = useState<'state' | 'store' | null>(null)
+  // mutated every render so the once-registered key handler reads the latest;
+  // Escape should close the inspector first, not the graph underneath it
+  const persistOpenRef = useRef(false)
+  persistOpenRef.current = openPersist !== null
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !persistOpenRef.current && onClose()
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     dialogRef.current?.focus()
@@ -188,6 +194,7 @@ export default function GraphView({
   const storeHot = storeReads.length > 0 || storeWrites.length > 0
 
   return (
+    <>
     <div className="gv-backdrop" onMouseDown={onClose}>
       <div className="gv-dialog" role="dialog" aria-modal="true" aria-label="Execution graph" tabIndex={-1} ref={dialogRef} onMouseDown={(e) => e.stopPropagation()}>
         <header className="gv-head">
@@ -302,8 +309,11 @@ export default function GraphView({
             {/* ── persistence layer: state channel + long-term store ── */}
             {/* these are not graph nodes; they are the channels the nodes read
                 and write, drawn dashed to set them apart from the DAG */}
-            <g className={stateHot ? 'gv-persist hot' : 'gv-persist'}>
+            <g className={stateHot ? 'gv-persist hot' : 'gv-persist'} onClick={() => setOpenPersist('state')} style={{ cursor: 'pointer' }}>
               <rect x={STATE.x} y={STATE.y} width={STATE.w} height={STATE.h} rx="12" fill="#fbfaf8" stroke="#2f6f4e" strokeWidth="1.4" strokeDasharray="5 4" strokeOpacity={stateHot ? 0.9 : 0.45} />
+              <text x={STATE.x + STATE.w - 13} y={STATE.y + STATE.h - 10} textAnchor="end" className="gv-inspect">
+                inspect ⤢
+              </text>
               <text x={STATE.x + 14} y={STATE.y + 22} className="gv-persist-h" fill="#2f6f4e">
                 state
               </text>
@@ -338,8 +348,11 @@ export default function GraphView({
               </text>
             </g>
 
-            <g className={storeHot ? 'gv-persist hot' : 'gv-persist'}>
+            <g className={storeHot ? 'gv-persist hot' : 'gv-persist'} onClick={() => setOpenPersist('store')} style={{ cursor: 'pointer' }}>
               <rect x={STORE.x} y={STORE.y} width={STORE.w} height={STORE.h} rx="12" fill="#fbfaf8" stroke="#41708c" strokeWidth="1.4" strokeDasharray="5 4" strokeOpacity={storeHot ? 0.9 : 0.45} />
+              <text x={STORE.x + STORE.w - 13} y={STORE.y + STORE.h - 10} textAnchor="end" className="gv-inspect">
+                inspect ⤢
+              </text>
               <text x={STORE.x + 14} y={STORE.y + 22} className="gv-persist-h" fill="#41708c">
                 store
               </text>
@@ -398,5 +411,10 @@ export default function GraphView({
         </div>
       </div>
     </div>
+
+    {openPersist && (
+      <PersistModal kind={openPersist} stepIndex={idx} timeLabel={step.t} playing={playing} onClose={() => setOpenPersist(null)} />
+    )}
+    </>
   )
 }

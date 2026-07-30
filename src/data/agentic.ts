@@ -768,6 +768,90 @@ ${wiring('open_url')}`,
   },
 }
 
+/* ── what the persistence layer actually holds ──────────────────────────
+ * The graph view's state and store panels are clickable; these back the
+ * inspector. State = the checkpointed channel values (messages via the
+ * add_messages reducer, plus plan and evidence). Store = namespaced
+ * long-term items. Everything is step-filtered so the inspector fills live.
+ */
+export type MsgRole = 'system' | 'human' | 'ai' | 'tool'
+export interface ChannelMessage {
+  since: number
+  role: MsgRole
+  name?: string
+  content: string
+}
+
+export const STATE_MESSAGES: ChannelMessage[] = [
+  { since: 0, role: 'system', content: 'Orchestrator: decompose the goal, delegate to subagents, and synthesise one grounded recommendation. House rules apply.' },
+  { since: 0, role: 'human', content: QUERY },
+  { since: 2, role: 'ai', name: 'orchestrator', content: 'Decompose into five workstreams: financial, news, SEC filings, competition, risk. Dispatch a subagent for each.' },
+  { since: 3, role: 'ai', name: 'orchestrator', content: 'tool_calls: Send × 5 → research, financial, news, risk, summary' },
+  { since: 8, role: 'tool', name: 'research', content: 'vector_db → 12 comparable acquisitions (AMD–Xilinx, Intel–Habana, NVIDIA–Mellanox, …)' },
+  { since: 9, role: 'tool', name: 'news', content: 'web_search → 8 recent articles (rate-limited once, retried, 200 OK)' },
+  { since: 10, role: 'tool', name: 'financial', content: 'sec + python → DCF fair value ≈ $38–44B; premium at $50B+ looks steep' },
+  { since: 11, role: 'tool', name: 'risk', content: 'knowledge_graph → antitrust the dominant risk; lengthy review likely' },
+  { since: 13, role: 'ai', name: 'summary', content: 'Built the evidence graph; antitrust and premium outweigh an immediate buy.' },
+  { since: 15, role: 'ai', name: 'summary', content: 'Recommendation: do not acquire immediately; pursue a partnership or staged investment. Confidence 92%.' },
+]
+
+export const STATE_PLAN = 'financial · news · SEC filings · competition · risk'
+
+export const STATE_EVIDENCE: { since: number; from: string; text: string }[] = [
+  { since: 8, from: 'research', text: 'Large accelerator deals clear, but wafer-scale is unproven at NVIDIA’s scale.' },
+  { since: 9, from: 'news', text: 'Coverage sentiment mixed: strong technical interest, real integration and antitrust doubt.' },
+  { since: 10, from: 'financial', text: 'DCF fair value ≈ $38–44B; a $50B+ acquisition premium looks steep.' },
+  { since: 11, from: 'risk', text: 'Antitrust is the dominant risk: high likelihood of a lengthy regulatory review.' },
+]
+
+/* one checkpoint is written per super-step; this is what each one committed */
+export const CHECKPOINT_WRITES: string[] = [
+  'messages += SystemMessage, HumanMessage · plan set',
+  'messages += AIMessage(tool_calls: Send × 5) · workers + summary spawned',
+  'messages += 4 × ToolMessage · evidence += 4 findings',
+  'evidence merged across workers',
+  'messages += AIMessage(evidence graph) · confidence set',
+  'messages += AIMessage(final recommendation)',
+]
+
+/* ── the long-term store, as namespaced key/value items ── */
+export interface StoreItem {
+  ns: string
+  key: string
+  value: string
+  since: number
+  source: string
+  reads: MemoryRead[]
+}
+
+const STORE_KEY: Record<string, { ns: string; key: string }> = {
+  'm-pref1': { ns: 'prefs', key: 'user:recommendation_style' },
+  'm-pref2': { ns: 'prefs', key: 'user:cite_sources' },
+  'm-fact1': { ns: 'facts', key: 'nvda:fy24_financials' },
+  'm-fact2': { ns: 'facts', key: 'cerebras:profile' },
+  'm-plan': { ns: 'plans', key: 'playbook:acquisition_dd' },
+}
+
+export const STORE_NAMESPACES = ['prefs', 'facts', 'plans'] as const
+
+export function storeItems(index: number): Record<string, StoreItem[]> {
+  const out: Record<string, StoreItem[]> = { prefs: [], facts: [], plans: [] }
+  for (const m of MEMORY) {
+    if (m.type !== 'long' || m.since > index) continue
+    const meta = STORE_KEY[m.id]
+    if (!meta) continue
+    out[meta.ns].push({
+      ns: meta.ns,
+      key: meta.key,
+      value: m.detail,
+      since: m.since,
+      source: m.source,
+      reads: (m.reads ?? []).filter((r) => r.step <= index),
+    })
+  }
+  return out
+}
+
 /* short tooltips for each region, per the brief's educational requirement */
 export const TIPS = {
   agent: 'The orchestrator. It reasons, plans, calls tools, spawns subagents, and synthesises the final answer.',

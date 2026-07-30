@@ -4924,3 +4924,237 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.72; }
 }
+
+/* persist inspector sits above the graph overlay */
+.agm-backdrop.psm-over { z-index: 230; }
+
+/* inspect affordance on the graph's state/store panels */
+.gv-inspect {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+  fill: #a49c92;
+  opacity: 0;
+  transition: opacity 160ms;
+}
+.gv-persist:hover .gv-inspect { opacity: 1; }
+
+/* ── channels tab ── */
+.psm-channel {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.psm-channel-h {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.psm-ch-name {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.psm-ch-red {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: #8a6a3c;
+}
+.psm-ch-count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--text-faint);
+}
+.psm-msgs,
+.psm-evidence,
+.psm-cps,
+.psm-access {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.psm-msg {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.psm-msg.fresh,
+.psm-item.fresh,
+.psm-acc.fresh,
+.psm-evidence li.fresh { animation: ag-mem-in 700ms cubic-bezier(0.2, 0.8, 0.3, 1); }
+.psm-role {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+.psm-role.system { background: #e8eae7; color: #13251b; }
+.psm-role.human { background: #f3dfe1; color: #a32a2a; }
+.psm-role.ai { background: var(--accent-mint); color: #2f6f4e; }
+.psm-role.tool { background: #d5e3ec; color: #41708c; }
+.psm-msg-name {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.psm-msg-body {
+  flex: 1 1 100%;
+  font-family: var(--serif);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  padding-left: 2px;
+}
+.psm-plain {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.psm-null { color: var(--text-faint); font-style: italic; }
+.psm-evidence li {
+  font-family: var(--serif);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.psm-ev-from {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-faint);
+  margin-right: 7px;
+}
+
+/* ── checkpoints tab ── */
+.psm-thread {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  background: var(--surface-sunken);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  margin-bottom: 12px;
+}
+.psm-cp {
+  border: 1px solid var(--border);
+  border-left: 3px solid #cfc9c1;
+  border-radius: var(--r-sm);
+  padding: 8px 11px;
+}
+.psm-cp.latest { border-left-color: #2f6f4e; background: var(--surface-sunken); }
+.psm-cp-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 3px;
+}
+.psm-cp-id {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink);
+}
+.psm-cp-ss {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-faint);
+}
+.psm-cp-wrote {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* ── store items tab ── */
+.psm-ns { margin-bottom: 14px; }
+.psm-ns-h {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.psm-ns-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #41708c;
+}
+.psm-ns-count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--text-faint);
+}
+.psm-item {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 9px 11px;
+  margin-bottom: 6px;
+  background: var(--surface-sunken);
+}
+.psm-item-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.psm-item-key {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.psm-item-meta {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-faint);
+}
+.psm-item-val {
+  margin: 5px 0 0;
+  font-family: var(--serif);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.psm-item-reads {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: #41708c;
+}
+
+/* ── store access log tab ── */
+.psm-acc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+.psm-acc-t { color: var(--text-faint); flex: 0 0 auto; width: 46px; }
+.psm-acc-op {
+  flex: 0 0 auto;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.psm-acc-op.read { background: #d5e3ec; color: #41708c; }
+.psm-acc-op.write { background: var(--accent-mint); color: #2f6f4e; }
+.psm-acc-label { color: var(--ink); flex: 1; }
+.psm-acc-agent { color: var(--text-faint); flex: 0 0 auto; }
