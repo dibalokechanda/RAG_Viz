@@ -1,0 +1,61 @@
+name: Sync to RAGViz Pages
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    # Do not run the mirror workflow inside the mirrored repository.
+    if: github.repository != 'ragviz/ragviz.github.io'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure Vite for root GitHub Pages URL
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path("vite.config.ts")
+          text = path.read_text()
+
+          old = "base: '/RAG_Viz/'"
+          new = "base: '/'"
+
+          if old in text:
+              text = text.replace(old, new)
+              path.write_text(text)
+              print("Changed Vite base from /RAG_Viz/ to /")
+          elif new in text:
+              print("Vite base is already /")
+          else:
+              raise SystemExit(
+                  "Could not find expected Vite base configuration in vite.config.ts"
+              )
+          PY
+
+      - name: Commit Pages-specific configuration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add vite.config.ts
+
+          git diff --cached --quiet || \
+            git commit -m "Configure root GitHub Pages deployment"
+
+      - name: Push to RAGViz Pages repository
+        env:
+          TOKEN: ${{ secrets.PAGES_SYNC_TOKEN }}
+        run: |
+          git remote remove pages 2>/dev/null || true
+          git remote add pages "https://x-access-token:${TOKEN}@github.com/ragviz/ragviz.github.io.git"
+          git push pages HEAD:main --force
